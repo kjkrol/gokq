@@ -1,4 +1,4 @@
-module kjkrol
+module github.com/kjkrol/goka
 
 go 1.23.3
 
