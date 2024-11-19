@@ -1,8 +1,10 @@
 # GOKA
 
-*aka "Goloang kjkrol algorithms"
+*aka "Goloang kjkrol algorithms & structures"
 
-The library provides a collection of various algorithms.
+The library provides a collection of various algorithms and structures.
+
+- QuadTree
 
 ## Contributor Recommendations
 
