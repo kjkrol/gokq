@@ -1,10 +1,10 @@
 package quadtree_test
 
 import (
-	"kjkrol/pkg/quadtree"
 	"slices"
 	"testing"
 
+	"github.com/kjkrol/goka/pkg/quadtree"
 	"github.com/kjkrol/gokg/pkg/geometry"
 )
 
