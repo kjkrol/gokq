@@ -9,100 +9,95 @@ import (
 	"github.com/kjkrol/gokg/pkg/geometry"
 )
 
-// QuadTree:
-// - Represents the quadtree data structure.
-// - Fields:
-//   - root: A pointer to the root node of the quadtree.
-//
-// - Methods:
-//   - NewQuadTree(box Box) QuadTree: Creates a new quadtree with the given bounding box.
-//   - Add(item Item): Adds an item to the quadtree.
-//   - FindNeighbors(target Item, distance int, metric func(geometry.Vec[int], geometry.Vec[int]) int) []Item:
-//     Finds and returns the neighbors of the target item within the specified distance using the given metric.
-type QuadTree struct {
-	root *Node
+// QuadTree represents a quadtree data structure for spatial indexing.
+type QuadTree[T geometry.SupportedNumeric] struct {
+	root  *Node[T]
+	plane geometry.Plane[T]
 }
 
-func NewQuadTree(box Box) QuadTree {
-	root := newNode(box, nil)
-	return QuadTree{root}
+// NewQuadTree creates a new quadtree with the specified plane.
+func NewQuadTree[T geometry.SupportedNumeric](plane geometry.Plane[T]) QuadTree[T] {
+	box := newBox(geometry.Vec[T]{X: 0, Y: 0}, plane.Size())
+	root := newNode[T](box, nil)
+	return QuadTree[T]{root, plane}
 }
 
-// Add inserts an item into the QuadTree. It starts at the root node and
-// traverses deeper into the tree until it finds a leaf node where the item
-// can be added. The item's position is determined by its vector.
-func (t *QuadTree) Add(item Item) {
+// Add inserts an item into the quadtree.
+func (t *QuadTree[T]) Add(item Item[T]) {
 	node := t.root
 	for node.isNode() {
-		node = node.goDeeper(item.Vector())
+		node = node.traverseToChild(item.Vector())
 	}
 	node.add(item)
 }
 
-// FindNeighbors searches for neighboring items within a specified distance from the target item.
-// It uses a custom metric function to determine the distance between items.
-//
-// Parameters:
-//   - target: The item for which neighbors are to be found.
-//   - distance: The maximum distance within which to search for neighbors.
-//   - metric: A function that calculates the distance between two vectors.
-//
-// Returns:
-//
-//	A slice of items that are neighbors of the target item within the specified distance.
-func (t *QuadTree) FindNeighbors(
-	target Item,
-	distance int,
-	metric func(geometry.Vec[int], geometry.Vec[int]) int,
-) []Item {
-	neighborNodes := make([]*Node, 0)
+// Close releases resources associated with the QuadTree.
+func (t *QuadTree[T]) Close() {
+	t.root.close()
+}
+
+// FindNeighbors returns a list of items that are within the specified distance of the target item.
+func (t *QuadTree[T]) FindNeighbors(target Item[T], distance T) []Item[T] {
+	neighborNodes := make([]*Node[T], 0)
 	probeBox := buildBox(target.Vector(), distance)
-	neighborNodes = t.root.inspect(probeBox, neighborNodes)
-	predicate := predicate(target, distance, metric)
+
+	if t.plane.Name() == "cyclic" {
+		wrappedBoxes := wrapBoxCyclic(probeBox, t.plane.Size(), geometry.VectorMathByType[T]())
+		neighborNodes = inspect2(t.root, wrappedBoxes, neighborNodes)
+	} else {
+		neighborNodes = inspect(t.root, probeBox, neighborNodes)
+	}
+
+	predicate := predicate(target, distance, t.plane.Metric)
 	return scan(neighborNodes, predicate)
 }
 
-func (n *Node) inspect(box Box, neighborNodes []*Node) []*Node {
-	if n.isLeaf() {
-		return append(neighborNodes, n)
+// ----------------------------------------------------------------------------
+
+func inspect[T geometry.SupportedNumeric](node *Node[T], box box[T], neighborNodes []*Node[T]) []*Node[T] {
+	if node.isLeaf() {
+		return append(neighborNodes, node)
 	}
-	for _, child := range n.childs {
-		if child.intersects(&box) {
-			neighborNodes = child.inspect(box, neighborNodes)
+	for _, childNode := range node.childs {
+		if childNode.box.intersects(box) {
+			neighborNodes = inspect(childNode, box, neighborNodes)
 		}
 	}
 	return neighborNodes
 }
 
-func predicate(
-	target Item,
-	distance int,
-	metric func(geometry.Vec[int], geometry.Vec[int]) int,
-) func(item *Item) bool {
-	if metric == nil {
-		metric = defaultMetric
+func inspect2[T geometry.SupportedNumeric](node *Node[T], boxes []box[T], neighborNodes []*Node[T]) []*Node[T] {
+	if node.isLeaf() {
+		return append(neighborNodes, node)
 	}
-	return func(item *Item) bool {
+	for _, childNode := range node.childs {
+		if childNode.box.intersectsAny(boxes) {
+			neighborNodes = inspect2(childNode, boxes, neighborNodes)
+		}
+	}
+	return neighborNodes
+}
+
+func predicate[T geometry.SupportedNumeric](
+	target Item[T],
+	distance T,
+	metric func(geometry.Vec[T], geometry.Vec[T]) T,
+) func(item *Item[T]) bool {
+	if metric == nil {
+		panic("metric function is required")
+	}
+	return func(item *Item[T]) bool {
+		if (*item).Vector() == target.Vector() {
+			return false
+		}
 		a := target.Vector()
 		b := (*item).Vector()
 		return metric(a, b) <= distance
 	}
 }
 
-func defaultMetric(a, b geometry.Vec[int]) int {
-	dx := a.X - b.X
-	if dx < 0 {
-		dx *= -1
-	}
-	dy := a.Y - b.Y
-	if dy < 0 {
-		dy *= -1
-	}
-	return dx + dy
-}
-
-func scan(neighborNodes []*Node, predicate func(*Item) bool) []Item {
-	neighborItems := make([]Item, 0)
+func scan[T geometry.SupportedNumeric](neighborNodes []*Node[T], predicate func(*Item[T]) bool) []Item[T] {
+	neighborItems := make([]Item[T], 0)
 	for _, node := range neighborNodes {
 		for _, neighborItem := range node.items {
 			if predicate(&neighborItem) {
@@ -113,12 +108,14 @@ func scan(neighborNodes []*Node, predicate func(*Item) bool) []Item {
 	return neighborItems
 }
 
+//-----------------------------------------------------------------------------
+
 // Item:
 // - Represents an item that can be stored in the quadtree.
 // - Methods:
 //   - Vector() geometry.Vec[int]: Returns the vector representation of the item.
-type Item interface {
-	Vector() geometry.Vec[int]
+type Item[T geometry.SupportedNumeric] interface {
+	Vector() geometry.Vec[T]
 }
 
 // Node:
@@ -128,23 +125,23 @@ type Item interface {
 //   - items: The items contained in the node.
 //   - parent: A pointer to the parent node.
 //   - childs: The child nodes of the current node.
-type Node struct {
-	box    Box
-	items  []Item
-	parent *Node
-	childs []*Node
+type Node[T geometry.SupportedNumeric] struct {
+	box    box[T]
+	items  []Item[T]
+	parent *Node[T]
+	childs []*Node[T]
 }
 
-func newNode(box Box, parent *Node) *Node {
-	items := make([]Item, 0)
-	return &Node{box: box, items: items, parent: parent}
+func newNode[T geometry.SupportedNumeric](box box[T], parent *Node[T]) *Node[T] {
+	items := make([]Item[T], 0)
+	return &Node[T]{box: box, items: items, parent: parent}
 }
 
-func (n *Node) isLeaf() bool { return len(n.childs) == 0 && len(n.items) > 0 }
+func (n *Node[T]) isLeaf() bool { return len(n.childs) == 0 }
 
-func (n *Node) isNode() bool { return len(n.childs) > 0 }
+func (n *Node[T]) isNode() bool { return len(n.childs) > 0 }
 
-func (n *Node) add(item Item) {
+func (n *Node[T]) add(item Item[T]) {
 	n.items = append(n.items, item)
 	if len(n.items) > 3 {
 		n.createChilds()
@@ -153,21 +150,21 @@ func (n *Node) add(item Item) {
 	}
 }
 
-func (n *Node) createChilds() {
-	var childBoxes [4]Box = n.box.split()
-	n.childs = make([]*Node, 4)
+func (n *Node[T]) createChilds() {
+	var childBoxes [4]box[T] = n.box.split()
+	n.childs = make([]*Node[T], 4)
 	for i, box := range childBoxes {
 		n.childs[i] = newNode(box, n)
 	}
 }
 
-func (n *Node) arrange() {
+func (n *Node[T]) arrange() {
 	for _, item := range n.items {
-		n.goDeeper(item.Vector()).add(item)
+		n.traverseToChild(item.Vector()).add(item)
 	}
 }
 
-// goDeeper determines the appropriate child node to traverse to based on the given vector's coordinates.
+// traverseToChild determines the appropriate child node to traverse to based on the given vector's coordinates.
 // It calculates the child index by comparing the vector's X and Y coordinates with the center of the current node's bounding box.
 // The child nodes are indexed as follows:
 // |0|1|
@@ -178,17 +175,22 @@ func (n *Node) arrange() {
 //
 // Returns:
 //   - *Node: The child node corresponding to the calculated index.
-func (n *Node) goDeeper(vector geometry.Vec[int]) *Node {
+func (n *Node[T]) traverseToChild(vector geometry.Vec[T]) *Node[T] {
 	childIdx := 0
-	if vector.Y > n.box.center.Y {
-		childIdx += 2
-	}
 	if vector.X > n.box.center.X {
 		childIdx += 1
+	}
+	if vector.Y > n.box.center.Y {
+		childIdx += 2
 	}
 	return n.childs[childIdx]
 }
 
-func (n *Node) intersects(box *Box) bool {
-	return n.box.intersects(box)
+func (n *Node[T]) close() {
+	for _, child := range n.childs {
+		child.close()
+	}
+	n.items = nil
+	n.childs = nil
+	n.parent = nil
 }
