@@ -134,9 +134,10 @@ func TestBox_intersectsCyclic(t *testing.T) {
 		},
 	}
 	size := geometry.Vec[int]{X: 100, Y: 100}
+	plane := geometry.NewBoundedPlane(size.X, size.Y)
 
 	for _, intersection := range intersects {
-		wrappedBoxes := wrapBoxCyclic(intersection.box2, size, geometry.VectorMathByType[int]())
+		wrappedBoxes := wrapBoxCyclic(intersection.box2, size, plane.Contains)
 		if !intersection.box1.intersectsAny(wrappedBoxes) {
 			t.Errorf("Box1 %v should intersects with Box2 %v", intersection.box1, intersection.box2)
 		}

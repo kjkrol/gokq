@@ -81,18 +81,7 @@ func (b box[T]) intersectsAny(others []box[T]) bool {
 	return false
 }
 
-// wrapBoxCyclic wraps the given box in a cyclic space defined by the size vector.
-// It returns a slice of boxes that includes the original box and its wrapped versions
-// based on predefined offset values.
-//
-// Parameters:
-// - b: The original box to be wrapped.
-// - size: The size of the cyclic space as a vector of integers.
-// - vecMath: A utility for vector math operations.
-//
-// Returns:
-// A slice of boxes including the original and its wrapped versions.
-func wrapBoxCyclic[T geometry.SupportedNumeric](b box[T], size geometry.Vec[T], vecMath geometry.VectorMath[T]) []box[T] {
+func wrapBoxCyclic[T geometry.SupportedNumeric](b box[T], size geometry.Vec[T], contains func(geometry.Vec[T]) bool) []box[T] {
 	var wrappedBoxes []box[T]
 
 	// Append original box directly
@@ -105,6 +94,8 @@ func wrapBoxCyclic[T geometry.SupportedNumeric](b box[T], size geometry.Vec[T], 
 		{X: size.X, Y: size.Y}, // Shift right-down
 	}
 
+	vecMath := geometry.VectorMathByType[T]()
+
 	// Generate wrapped versions for each offset
 	for _, offset := range offsets {
 		wrapped := box[T]{
@@ -115,7 +106,10 @@ func wrapBoxCyclic[T geometry.SupportedNumeric](b box[T], size geometry.Vec[T], 
 		vecMath.Wrap(&wrapped.topLeft, offset)
 		vecMath.Wrap(&wrapped.bottomRight, offset)
 		vecMath.Wrap(&wrapped.center, offset)
-		wrappedBoxes = append(wrappedBoxes, wrapped)
+
+		if contains(wrapped.topLeft) || contains(wrapped.bottomRight) {
+			wrappedBoxes = append(wrappedBoxes, wrapped)
+		}
 	}
 
 	return wrappedBoxes

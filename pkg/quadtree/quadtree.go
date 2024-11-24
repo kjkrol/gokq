@@ -38,41 +38,43 @@ func (t *QuadTree[T]) Close() {
 
 // FindNeighbors returns a list of items that are within the specified distance of the target item.
 func (t *QuadTree[T]) FindNeighbors(target Item[T], distance T) []Item[T] {
-	neighborNodes := make([]*Node[T], 0)
 	probeBox := buildBox(target.Vector(), distance)
-
-	if t.plane.Name() == "cyclic" {
-		wrappedBoxes := wrapBoxCyclic(probeBox, t.plane.Size(), geometry.VectorMathByType[T]())
-		neighborNodes = inspect2(t.root, wrappedBoxes, neighborNodes)
-	} else {
-		neighborNodes = inspect(t.root, probeBox, neighborNodes)
-	}
-
+	neighborNodes := selectingNeighbors(probeBox, t)
 	predicate := predicate(target, distance, t.plane.Metric)
 	return scan(neighborNodes, predicate)
 }
 
+func selectingNeighbors[T geometry.SupportedNumeric](probeBox box[T], t *QuadTree[T]) []*Node[T] {
+	neighborNodes := make([]*Node[T], 0)
+	if t.plane.Name() == "cyclic" {
+		wrappedBoxes := wrapBoxCyclic(probeBox, t.plane.Size(), t.plane.Contains)
+		return findIntersectingNodesMultiple(t.root, wrappedBoxes, neighborNodes)
+	} else {
+		return findIntersectingNodes(t.root, probeBox, neighborNodes)
+	}
+}
+
 // ----------------------------------------------------------------------------
 
-func inspect[T geometry.SupportedNumeric](node *Node[T], box box[T], neighborNodes []*Node[T]) []*Node[T] {
+func findIntersectingNodes[T geometry.SupportedNumeric](node *Node[T], box box[T], neighborNodes []*Node[T]) []*Node[T] {
 	if node.isLeaf() {
 		return append(neighborNodes, node)
 	}
 	for _, childNode := range node.childs {
 		if childNode.box.intersects(box) {
-			neighborNodes = inspect(childNode, box, neighborNodes)
+			neighborNodes = findIntersectingNodes(childNode, box, neighborNodes)
 		}
 	}
 	return neighborNodes
 }
 
-func inspect2[T geometry.SupportedNumeric](node *Node[T], boxes []box[T], neighborNodes []*Node[T]) []*Node[T] {
+func findIntersectingNodesMultiple[T geometry.SupportedNumeric](node *Node[T], boxes []box[T], neighborNodes []*Node[T]) []*Node[T] {
 	if node.isLeaf() {
 		return append(neighborNodes, node)
 	}
 	for _, childNode := range node.childs {
 		if childNode.box.intersectsAny(boxes) {
-			neighborNodes = inspect2(childNode, boxes, neighborNodes)
+			neighborNodes = findIntersectingNodesMultiple(childNode, boxes, neighborNodes)
 		}
 	}
 	return neighborNodes
