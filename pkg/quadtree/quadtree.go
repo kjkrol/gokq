@@ -46,38 +46,29 @@ func (t *QuadTree[T]) FindNeighbors(target Item[T], distance T) []Item[T] {
 
 func selectingNeighbors[T geometry.SupportedNumeric](probeBox box[T], t *QuadTree[T]) []*Node[T] {
 	neighborNodes := make([]*Node[T], 0)
+	probeBoxes := make([]box[T], 0)
+	probeBoxes = append(probeBoxes, probeBox)
 	if t.plane.Name() == "cyclic" {
 		wrappedBoxes := wrapBoxCyclic(probeBox, t.plane.Size(), t.plane.Contains)
-		return findIntersectingNodesMultiple(t.root, wrappedBoxes, neighborNodes)
-	} else {
-		return findIntersectingNodes(t.root, probeBox, neighborNodes)
+		probeBoxes = append(probeBoxes, wrappedBoxes...)
 	}
+	for _, pBox := range probeBoxes {
+		findIntersectingNodes(t.root, pBox, &neighborNodes)
+	}
+	return neighborNodes
 }
 
 // ----------------------------------------------------------------------------
 
-func findIntersectingNodes[T geometry.SupportedNumeric](node *Node[T], box box[T], neighborNodes []*Node[T]) []*Node[T] {
+func findIntersectingNodes[T geometry.SupportedNumeric](node *Node[T], box box[T], neighborNodes *[]*Node[T]) {
 	if node.isLeaf() {
-		return append(neighborNodes, node)
+		*neighborNodes = append(*neighborNodes, node)
 	}
 	for _, childNode := range node.childs {
 		if childNode.box.intersects(box) {
-			neighborNodes = findIntersectingNodes(childNode, box, neighborNodes)
+			findIntersectingNodes(childNode, box, neighborNodes)
 		}
 	}
-	return neighborNodes
-}
-
-func findIntersectingNodesMultiple[T geometry.SupportedNumeric](node *Node[T], boxes []box[T], neighborNodes []*Node[T]) []*Node[T] {
-	if node.isLeaf() {
-		return append(neighborNodes, node)
-	}
-	for _, childNode := range node.childs {
-		if childNode.box.intersectsAny(boxes) {
-			neighborNodes = findIntersectingNodesMultiple(childNode, boxes, neighborNodes)
-		}
-	}
-	return neighborNodes
 }
 
 func predicate[T geometry.SupportedNumeric](

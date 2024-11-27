@@ -81,11 +81,12 @@ func (b box[T]) intersectsAny(others []box[T]) bool {
 	return false
 }
 
-func wrapBoxCyclic[T geometry.SupportedNumeric](b box[T], size geometry.Vec[T], contains func(geometry.Vec[T]) bool) []box[T] {
+func wrapBoxCyclic[T geometry.SupportedNumeric](
+	b box[T],
+	size geometry.Vec[T],
+	contains func(geometry.Vec[T]) bool,
+) []box[T] {
 	var wrappedBoxes []box[T]
-
-	// Append original box directly
-	wrappedBoxes = append(wrappedBoxes, b)
 
 	// Predefined offset values for wrapping
 	offsets := []geometry.Vec[T]{
