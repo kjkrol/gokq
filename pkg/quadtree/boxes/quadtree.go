@@ -1,6 +1,8 @@
 package boxes
 
 import (
+	"sort"
+
 	quadcore "github.com/kjkrol/goka/pkg/quadtree/base"
 	"github.com/kjkrol/gokg/pkg/geometry"
 )
@@ -37,25 +39,36 @@ func (t *QuadTree[T]) FindNeighbors(target Item[T], margin T) []Item[T] {
 	neighborNodes := selectingNeighbors(expanded, t)
 
 	// 3. filtrujemy — zostawiamy tylko te, które naprawdę się przecinają
-	return scan(neighborNodes, func(item *Item[T]) bool {
+	neighbors := scan(neighborNodes, func(item *Item[T]) bool {
 		dist := boxDistance(target.Bounds(), (*item).Bounds(), t.plane.Metric)
 		return dist <= margin
 	})
+
+	SortNeighbors(neighbors)
+	return neighbors
 }
 
-// func boxDistance[T geometry.SupportedNumeric](
-// 	a, b quadcore.Box[T],
-// 	metric func(geometry.Vec[T], geometry.Vec[T]) T,
-// ) T {
-// 	// jeśli się przecinają, dystans = 0
-// 	if a.Intersects(b) {
-// 		return 0
-// 	}
-// 	// inaczej bierz najbliższe punkty z obu boxów
-// 	// tu uproszczona wersja: licz dystans między środkami
-// 	// ALE można zrobić dokładniej: min odległość między krawędziami
-// 	return metric(a.Center, b.Center)
-// }
+// SortNeighbors deterministycznie sortuje itemy po ich TopLeft (najpierw Y, potem X).
+func SortNeighbors[T geometry.SupportedNumeric](items []Item[T]) {
+	sort.Slice(items, func(i, j int) bool {
+		ai, aj := items[i].Bounds(), items[j].Bounds()
+
+		// najpierw Y lewego górnego
+		if ai.TopLeft.Y != aj.TopLeft.Y {
+			return ai.TopLeft.Y < aj.TopLeft.Y
+		}
+		// potem X lewego górnego
+		if ai.TopLeft.X != aj.TopLeft.X {
+			return ai.TopLeft.X < aj.TopLeft.X
+		}
+		// potem Y prawego dolnego
+		if ai.BottomRight.Y != aj.BottomRight.Y {
+			return ai.BottomRight.Y < aj.BottomRight.Y
+		}
+		// na końcu X prawego dolnego
+		return ai.BottomRight.X < aj.BottomRight.X
+	})
+}
 
 func boxDistance[T geometry.SupportedNumeric](
 	a, b quadcore.Box[T],
@@ -179,32 +192,32 @@ func (n *Node[T]) close() {
 
 //-----------------------------------------------------------------------------
 
-// selectingNeighbors działa jak wcześniej, ale operuje na boxach.
 func selectingNeighbors[T geometry.SupportedNumeric](probeBox quadcore.Box[T], t *QuadTree[T]) []*Node[T] {
-	neighborNodes := make([]*Node[T], 0)
+	neighborSet := make(map[*Node[T]]struct{})
 	probeBoxes := []quadcore.Box[T]{probeBox}
 	if t.plane.Name() == "cyclic" {
 		wrappedBoxes := quadcore.WrapBoxCyclic(probeBox, t.plane.Size(), t.plane.Contains)
 		probeBoxes = append(probeBoxes, wrappedBoxes...)
 	}
 	for _, pBox := range probeBoxes {
-		findIntersectingNodes(t.root, pBox, &neighborNodes)
+		findIntersectingNodesUnique(t.root, pBox, neighborSet)
 	}
 
+	// konwersja mapy -> slice
+	neighborNodes := make([]*Node[T], 0, len(neighborSet))
+	for n := range neighborSet {
+		neighborNodes = append(neighborNodes, n)
+	}
 	return neighborNodes
 }
 
-func findIntersectingNodes[T geometry.SupportedNumeric](node *Node[T], probeBox quadcore.Box[T], neighborNodes *[]*Node[T]) {
-	// Jeżeli węzeł w ogóle nie przecina obszaru sondy, to nie schodzimy w dół.
+func findIntersectingNodesUnique[T geometry.SupportedNumeric](node *Node[T], probeBox quadcore.Box[T], neighborSet map[*Node[T]]struct{}) {
 	if !node.box.Intersects(probeBox) {
 		return
 	}
-	// Dodajemy węzeł bez względu na to, czy jest liściem — bo itemy mogą być też w węźle wewnętrznym.
-	*neighborNodes = append(*neighborNodes, node)
-
-	// Schodzimy do dzieci (jeśli są).
+	neighborSet[node] = struct{}{}
 	for _, child := range node.childs {
-		findIntersectingNodes(child, probeBox, neighborNodes)
+		findIntersectingNodesUnique(child, probeBox, neighborSet)
 	}
 }
 
