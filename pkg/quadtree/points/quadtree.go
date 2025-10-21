@@ -3,9 +3,10 @@
 // it into four quadrants or regions. This structure is useful for various
 // spatial indexing applications, such as range searching, nearest neighbor
 // searching, and collision detection in 2D space.
-package quadtree
+package points
 
 import (
+	quadcore "github.com/kjkrol/goka/pkg/quadtree/base"
 	"github.com/kjkrol/gokg/pkg/geometry"
 )
 
@@ -17,8 +18,8 @@ type QuadTree[T geometry.SupportedNumeric] struct {
 
 // NewQuadTree creates a new quadtree with the specified plane.
 func NewQuadTree[T geometry.SupportedNumeric](plane geometry.Plane[T]) QuadTree[T] {
-	box := newBox(geometry.Vec[T]{X: 0, Y: 0}, plane.Size())
-	root := newNode[T](box, nil)
+	Box := quadcore.NewBox(geometry.Vec[T]{X: 0, Y: 0}, plane.Size())
+	root := newNode[T](Box, nil)
 	return QuadTree[T]{root, plane}
 }
 
@@ -29,6 +30,7 @@ func (t *QuadTree[T]) Add(item Item[T]) {
 		node = node.traverseToChild(item.Vector())
 	}
 	node.add(item)
+
 }
 
 // Close releases resources associated with the QuadTree.
@@ -38,18 +40,18 @@ func (t *QuadTree[T]) Close() {
 
 // FindNeighbors returns a list of items that are within the specified distance of the target item.
 func (t *QuadTree[T]) FindNeighbors(target Item[T], distance T) []Item[T] {
-	probeBox := buildBox(target.Vector(), distance)
+	probeBox := quadcore.BuildBox(target.Vector(), distance)
 	neighborNodes := selectingNeighbors(probeBox, t)
 	predicate := predicate(target, distance, t.plane.Metric)
 	return scan(neighborNodes, predicate)
 }
 
-func selectingNeighbors[T geometry.SupportedNumeric](probeBox box[T], t *QuadTree[T]) []*Node[T] {
+func selectingNeighbors[T geometry.SupportedNumeric](probeBox quadcore.Box[T], t *QuadTree[T]) []*Node[T] {
 	neighborNodes := make([]*Node[T], 0)
-	probeBoxes := make([]box[T], 0)
+	probeBoxes := make([]quadcore.Box[T], 0)
 	probeBoxes = append(probeBoxes, probeBox)
 	if t.plane.Name() == "cyclic" {
-		wrappedBoxes := wrapBoxCyclic(probeBox, t.plane.Size(), t.plane.Contains)
+		wrappedBoxes := quadcore.WrapBoxCyclic(probeBox, t.plane.Size(), t.plane.Contains)
 		probeBoxes = append(probeBoxes, wrappedBoxes...)
 	}
 	for _, pBox := range probeBoxes {
@@ -60,13 +62,13 @@ func selectingNeighbors[T geometry.SupportedNumeric](probeBox box[T], t *QuadTre
 
 // ----------------------------------------------------------------------------
 
-func findIntersectingNodes[T geometry.SupportedNumeric](node *Node[T], box box[T], neighborNodes *[]*Node[T]) {
+func findIntersectingNodes[T geometry.SupportedNumeric](node *Node[T], Box quadcore.Box[T], neighborNodes *[]*Node[T]) {
 	if node.isLeaf() {
 		*neighborNodes = append(*neighborNodes, node)
 	}
 	for _, childNode := range node.childs {
-		if childNode.box.intersects(box) {
-			findIntersectingNodes(childNode, box, neighborNodes)
+		if childNode.Box.Intersects(Box) {
+			findIntersectingNodes(childNode, Box, neighborNodes)
 		}
 	}
 }
@@ -114,20 +116,20 @@ type Item[T geometry.SupportedNumeric] interface {
 // Node:
 // - Represents a node in the quadtree.
 // - Fields:
-//   - box: The bounding box of the node.
+//   - Box: The bounding Box of the node.
 //   - items: The items contained in the node.
 //   - parent: A pointer to the parent node.
 //   - childs: The child nodes of the current node.
 type Node[T geometry.SupportedNumeric] struct {
-	box    box[T]
+	Box    quadcore.Box[T]
 	items  []Item[T]
 	parent *Node[T]
 	childs []*Node[T]
 }
 
-func newNode[T geometry.SupportedNumeric](box box[T], parent *Node[T]) *Node[T] {
+func newNode[T geometry.SupportedNumeric](Box quadcore.Box[T], parent *Node[T]) *Node[T] {
 	items := make([]Item[T], 0)
-	return &Node[T]{box: box, items: items, parent: parent}
+	return &Node[T]{Box: Box, items: items, parent: parent}
 }
 
 func (n *Node[T]) isLeaf() bool { return len(n.childs) == 0 }
@@ -144,10 +146,10 @@ func (n *Node[T]) add(item Item[T]) {
 }
 
 func (n *Node[T]) createChilds() {
-	var childBoxes [4]box[T] = n.box.split()
+	var childBoxes [4]quadcore.Box[T] = n.Box.Split()
 	n.childs = make([]*Node[T], 4)
-	for i, box := range childBoxes {
-		n.childs[i] = newNode(box, n)
+	for i, Box := range childBoxes {
+		n.childs[i] = newNode(Box, n)
 	}
 }
 
@@ -158,7 +160,7 @@ func (n *Node[T]) arrange() {
 }
 
 // traverseToChild determines the appropriate child node to traverse to based on the given vector's coordinates.
-// It calculates the child index by comparing the vector's X and Y coordinates with the center of the current node's bounding box.
+// It calculates the child index by comparing the vector's X and Y coordinates with the center of the current node's bounding Box.
 // The child nodes are indexed as follows:
 // |0|1|
 // |2|3|
@@ -170,10 +172,10 @@ func (n *Node[T]) arrange() {
 //   - *Node: The child node corresponding to the calculated index.
 func (n *Node[T]) traverseToChild(vector geometry.Vec[T]) *Node[T] {
 	childIdx := 0
-	if vector.X > n.box.center.X {
+	if vector.X > n.Box.Center.X {
 		childIdx += 1
 	}
-	if vector.Y > n.box.center.Y {
+	if vector.Y > n.Box.Center.Y {
 		childIdx += 2
 	}
 	return n.childs[childIdx]

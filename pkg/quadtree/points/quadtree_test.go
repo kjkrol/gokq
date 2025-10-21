@@ -1,4 +1,4 @@
-package quadtree
+package points
 
 import (
 	"testing"
