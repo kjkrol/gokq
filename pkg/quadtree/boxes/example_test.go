@@ -8,11 +8,11 @@ import (
 )
 
 // ExampleBoxItem implementuje Item dla QuadTree boxowego.
-type ExampleBoxItem struct {
-	box quadcore.Box[int]
+type ExampleBoxItem[T geometry.SupportedNumeric] struct {
+	box quadcore.Box[T]
 }
 
-func (ei *ExampleBoxItem) Bounds() quadcore.Box[int] {
+func (ei *ExampleBoxItem[T]) Bounds() quadcore.Box[T] {
 	return ei.box
 }
 
@@ -23,7 +23,7 @@ func ExampleQuadTree() {
 	defer qtree.Close()
 
 	// Dodajemy kilka obiektów jako boxy 1x1
-	items := []*ExampleBoxItem{
+	items := []*ExampleBoxItem[int]{
 		{box: quadcore.NewBox(geometry.Vec[int]{X: 32, Y: 33}, geometry.Vec[int]{X: 10, Y: 5})},
 		{box: quadcore.NewBox(geometry.Vec[int]{X: 31, Y: 32}, geometry.Vec[int]{X: 11, Y: 12})},
 		{box: quadcore.NewBox(geometry.Vec[int]{X: 33, Y: 32}, geometry.Vec[int]{X: 40, Y: 13})},
@@ -37,7 +37,7 @@ func ExampleQuadTree() {
 	}
 
 	// Wybieramy target
-	target := &ExampleBoxItem{box: quadcore.NewBox(geometry.Vec[int]{X: 32, Y: 32}, geometry.Vec[int]{X: 33, Y: 33})}
+	target := &ExampleBoxItem[int]{box: quadcore.NewBox(geometry.Vec[int]{X: 32, Y: 32}, geometry.Vec[int]{X: 33, Y: 33})}
 
 	// Szukamy sąsiadów targeta z marginesem 0 (czyli boxy przecinające się dokładnie z nim)
 	neighbors := qtree.FindNeighbors(target, 0)
@@ -56,34 +56,35 @@ func ExampleQuadTree() {
 }
 
 // ExampleQuadTree_largeBoxes pokazuje działanie szukania sąsiadów.
-// Wizualizacja tego przykładu znajduje się w docs/ExampleQuadTree_largeBoxes.png
+// Wizualizacja tego przykładu znajduje się w docs/ExampleQuadTree_largeBoxes.svg
 func ExampleQuadTree_largeBoxes() {
 	// Tworzymy płaszczyznę i QuadTree
-	boundedPlane := geometry.NewBoundedPlane(64, 64)
+	boundedPlane := geometry.NewBoundedPlane(64.0, 64.0)
 	qtree := NewQuadTree(boundedPlane)
 	defer qtree.Close()
 
 	// Dodajemy boxy 2x2
-	items := []*ExampleBoxItem{
-		{box: quadcore.NewBox(geometry.Vec[int]{X: 9, Y: 7}, geometry.Vec[int]{X: 11, Y: 9})},   // powyżej w odległości 0
-		{box: quadcore.NewBox(geometry.Vec[int]{X: 9, Y: 11}, geometry.Vec[int]{X: 11, Y: 13})}, // poniżej w odległości 0
-		{box: quadcore.NewBox(geometry.Vec[int]{X: 7, Y: 9}, geometry.Vec[int]{X: 9, Y: 11})},   // z lewej w odległości 0
-		{box: quadcore.NewBox(geometry.Vec[int]{X: 11, Y: 9}, geometry.Vec[int]{X: 13, Y: 11})}, // z prawej w odległości 0
-		{box: quadcore.NewBox(geometry.Vec[int]{X: 9, Y: 4}, geometry.Vec[int]{X: 11, Y: 6})},   // powyżej w odległości 3
-		{box: quadcore.NewBox(geometry.Vec[int]{X: 9, Y: 14}, geometry.Vec[int]{X: 11, Y: 16})}, // poniżej w odległości 3
-		{box: quadcore.NewBox(geometry.Vec[int]{X: 4, Y: 9}, geometry.Vec[int]{X: 6, Y: 11})},   // z lewej w odległości 3
-		{box: quadcore.NewBox(geometry.Vec[int]{X: 14, Y: 9}, geometry.Vec[int]{X: 16, Y: 11})}, // z prawej w odległości 3
-		{box: quadcore.NewBox(geometry.Vec[int]{X: 9, Y: 5}, geometry.Vec[int]{X: 11, Y: 7})},   // powyzej w odleglosci 2
+	items := []*ExampleBoxItem[float64]{
+		{box: quadcore.NewBox(geometry.Vec[float64]{X: 9, Y: 7}, geometry.Vec[float64]{X: 11, Y: 9})},   // powyżej w odległości 0
+		{box: quadcore.NewBox(geometry.Vec[float64]{X: 9, Y: 11}, geometry.Vec[float64]{X: 11, Y: 13})}, // poniżej w odległości 0
+		{box: quadcore.NewBox(geometry.Vec[float64]{X: 7, Y: 9}, geometry.Vec[float64]{X: 9, Y: 11})},   // z lewej w odległości 0
+		{box: quadcore.NewBox(geometry.Vec[float64]{X: 11, Y: 9}, geometry.Vec[float64]{X: 13, Y: 11})}, // z prawej w odległości 0
+		{box: quadcore.NewBox(geometry.Vec[float64]{X: 9, Y: 4}, geometry.Vec[float64]{X: 11, Y: 6})},   // powyżej w odległości 3
+		{box: quadcore.NewBox(geometry.Vec[float64]{X: 9, Y: 14}, geometry.Vec[float64]{X: 11, Y: 16})}, // poniżej w odległości 3
+		{box: quadcore.NewBox(geometry.Vec[float64]{X: 4, Y: 9}, geometry.Vec[float64]{X: 6, Y: 11})},   // z lewej w odległości 3
+		{box: quadcore.NewBox(geometry.Vec[float64]{X: 14, Y: 9}, geometry.Vec[float64]{X: 16, Y: 11})}, // z prawej w odległości 3
+		{box: quadcore.NewBox(geometry.Vec[float64]{X: 9, Y: 5}, geometry.Vec[float64]{X: 11, Y: 7})},   // powyzej w odleglosci 2
+		{box: quadcore.NewBox(geometry.Vec[float64]{X: 6, Y: 6}, geometry.Vec[float64]{X: 8, Y: 8})},    // powyzej w odleglosci 2
 	}
 	for _, item := range items {
 		qtree.Add(item)
 	}
 
 	// Target to pierwszy box
-	target := &ExampleBoxItem{box: quadcore.NewBox(geometry.Vec[int]{X: 9, Y: 9}, geometry.Vec[int]{X: 11, Y: 11})}
+	target := &ExampleBoxItem[float64]{box: quadcore.NewBox(geometry.Vec[float64]{X: 9, Y: 9}, geometry.Vec[float64]{X: 11, Y: 11})}
 
-	// Szukamy sąsiadów targeta z marginesem 2
-	neighbors := qtree.FindNeighbors(target, 2)
+	// Szukamy sąsiadów targeta z marginesem 1.5
+	neighbors := qtree.FindNeighbors(target, 1.5)
 
 	for _, neighbor := range neighbors {
 		fmt.Println(neighbor.Bounds())
@@ -92,7 +93,7 @@ func ExampleQuadTree_largeBoxes() {
 	// Output:
 	// {(9,7) (11,9) (10,8)}
 	// {(7,9) (9,11) (8,10)}
-	// {(9,5) (11,7) (10,6)}
+	// {(6,6) (8,8) (7,7)}
 	// {(9,11) (11,13) (10,12)}
 	// {(11,9) (13,11) (12,10)}
 }
