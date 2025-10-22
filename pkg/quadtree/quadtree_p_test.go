@@ -1,4 +1,4 @@
-package points
+package quadtree
 
 import (
 	"testing"
@@ -11,7 +11,7 @@ type TestItem[T geometry.SupportedNumeric] struct {
 	pos geometry.Vec[T]
 }
 
-func (ts *TestItem[T]) Vector() geometry.Vec[T] {
+func (ts *TestItem[T]) Value() geometry.Vec[T] {
 	return ts.pos
 }
 
@@ -25,7 +25,7 @@ func newTestItem[T geometry.SupportedNumeric](x, y T) *TestItem[T] {
 
 func TestQuadTreeFindNeighbors(t *testing.T) {
 	boundedPlane := geometry.NewBoundedPlane(64.0, 64.0)
-	qtree := NewQuadTree(boundedPlane)
+	qtree := NewPointQuadTree(boundedPlane)
 
 	defer qtree.Close()
 
@@ -48,8 +48,8 @@ func TestQuadTreeFindNeighbors(t *testing.T) {
 	qtree.Add(item7)
 	qtree.Add(item8)
 
-	expected := [4]Item[float64]{item1, item2, item3, item4}
-	for i := 0; i < 100; i++ {
+	expected := [4]Item[geometry.Vec[float64], float64]{item1, item2, item3, item4}
+	for range 100 {
 		foundNeightbors := qtree.FindNeighbors(target, 1)
 		if !sliceutils.SameElements(foundNeightbors[:], expected[:]) {
 			t.Errorf("result %v not equal to expected %v", foundNeightbors, expected)
@@ -59,28 +59,28 @@ func TestQuadTreeFindNeighbors(t *testing.T) {
 
 func TestQuadTreeForBoundedPlane(t *testing.T) {
 	boundedPlane := geometry.NewBoundedPlane(4, 4)
-	qtree := NewQuadTree(boundedPlane)
+	qtree := NewPointQuadTree(boundedPlane)
 
 	defer qtree.Close()
 
-	target := newTestItem[int](0, 0)
-	item1 := newTestItem[int](0, 1)
-	item2 := newTestItem[int](1, 0)
-	item3 := newTestItem[int](2, 0)
-	item4 := newTestItem[int](0, 2)
+	target := newTestItem(0, 0)
+	item1 := newTestItem(0, 1)
+	item2 := newTestItem(1, 0)
+	item3 := newTestItem(2, 0)
+	item4 := newTestItem(0, 2)
 
 	qtree.Add(item1)
 	qtree.Add(item2)
 	qtree.Add(item3)
 	qtree.Add(item4)
 
-	item5 := newTestItem[int](2, 2)
-	item6 := newTestItem[int](1, 1)
+	item5 := newTestItem(2, 2)
+	item6 := newTestItem(1, 1)
 	qtree.Add(item5)
 	qtree.Add(item6)
 
-	expected := [2]Item[int]{item1, item2}
-	for i := 0; i < 100000; i++ {
+	expected := [2]Item[geometry.Vec[int], int]{item1, item2}
+	for range 100000 {
 		foundNeightbors := qtree.FindNeighbors(target, 1)
 		if !sliceutils.SameElements(foundNeightbors[:], expected[:]) {
 			t.Errorf("result %v not equal to expected %v", foundNeightbors, expected)
@@ -90,32 +90,32 @@ func TestQuadTreeForBoundedPlane(t *testing.T) {
 
 func TestQuadTreeForCyclicBoundedPlane(t *testing.T) {
 	cyclicBoundedPlane := geometry.NewCyclicBoundedPlane(4, 4)
-	qtree := NewQuadTree(cyclicBoundedPlane)
+	qtree := NewPointQuadTree(cyclicBoundedPlane)
 
 	defer qtree.Close()
 
-	target := newTestItem[int](0, 0)
-	item1 := newTestItem[int](0, 1)
-	item2 := newTestItem[int](1, 0)
-	item3 := newTestItem[int](2, 0)
-	item4 := newTestItem[int](0, 2)
+	target := newTestItem(0, 0)
+	item1 := newTestItem(0, 1)
+	item2 := newTestItem(1, 0)
+	item3 := newTestItem(2, 0)
+	item4 := newTestItem(0, 2)
 
 	qtree.Add(item1)
 	qtree.Add(item2)
 	qtree.Add(item3)
 	qtree.Add(item4)
 
-	item5 := newTestItem[int](2, 2)
-	item6 := newTestItem[int](1, 1)
-	item7 := newTestItem[int](0, 3)
-	item8 := newTestItem[int](3, 0)
+	item5 := newTestItem(2, 2)
+	item6 := newTestItem(1, 1)
+	item7 := newTestItem(0, 3)
+	item8 := newTestItem(3, 0)
 	qtree.Add(item5)
 	qtree.Add(item6)
 	qtree.Add(item7)
 	qtree.Add(item8)
 
-	expected := [4]Item[int]{item1, item2, item7, item8}
-	for i := 0; i < 100; i++ {
+	expected := [4]Item[geometry.Vec[int], int]{item1, item2, item7, item8}
+	for range 100 {
 		foundNeighbors := qtree.FindNeighbors(target, 1)
 		if !sliceutils.SameElements(foundNeighbors[:], expected[:]) {
 			t.Errorf("result %v not equal to expected %v", foundNeighbors, expected)
@@ -125,45 +125,47 @@ func TestQuadTreeForCyclicBoundedPlane(t *testing.T) {
 
 func TestQuadTreeForCyclicBoundedPlaneWithLeavesIn2ndGeneration(t *testing.T) {
 	cyclicBoundedPlane := geometry.NewCyclicBoundedPlane(100, 100)
-	qtree := NewQuadTree(cyclicBoundedPlane)
-
+	qtree := NewPointQuadTree(cyclicBoundedPlane)
 	defer qtree.Close()
 
 	item1 := &TestItem[int]{pos: geometry.Vec[int]{X: 0, Y: 0}}
 	item2 := &TestItem[int]{pos: geometry.Vec[int]{X: 0, Y: 99}}
 	item3 := &TestItem[int]{pos: geometry.Vec[int]{X: 99, Y: 0}}
+	item4 := &TestItem[int]{pos: geometry.Vec[int]{X: 99, Y: 99}}
 
 	qtree.Add(item1)
 	qtree.Add(item2)
 	qtree.Add(item3)
+	qtree.Add(item4)
 
-	// Insert points such that the first leaves appear only in the 2th generation/layer of nodes
+	// 5-ty punkt wymusi split przy capacity=4
+	qtree.Add(&TestItem[int]{pos: geometry.Vec[int]{X: 50, Y: 50}})
+
+	// Insert points such that the first leaves appear only in the 2nd generation/layer
 	for _, point := range []geometry.Vec[int]{
 		{X: 10, Y: 10}, {X: 90, Y: 10}, {X: 10, Y: 90}, {X: 90, Y: 90},
 		{X: 30, Y: 30}, {X: 70, Y: 30}, {X: 30, Y: 70}, {X: 70, Y: 70},
 		{X: 20, Y: 20}, {X: 80, Y: 20}, {X: 20, Y: 80}, {X: 80, Y: 80},
 		{X: 40, Y: 40}, {X: 60, Y: 40}, {X: 40, Y: 60}, {X: 60, Y: 60},
 	} {
-		item := &TestItem[int]{pos: point}
-		qtree.Add(item)
+		qtree.Add(&TestItem[int]{pos: point})
 	}
 
 	// Verify that the first leaves appear only in the 2nd generation/layer
 	verifyNodeDepth(t, qtree.root, 0, 2)
 
-	expected := [2]Item[int]{item2, item3}
+	expected := [2]Item[geometry.Vec[int], int]{item2, item3}
 	for i := 0; i < 100; i++ {
 		foundNeighbors := qtree.FindNeighbors(item1, 1)
 		if !sliceutils.SameElements(foundNeighbors[:], expected[:]) {
 			t.Errorf("result %v not equal to expected %v", foundNeighbors, expected)
 		}
 	}
-
 }
 
 func TestQuadTreeForCyclicBoundedPlaneWithLeavesIn5thGeneration(t *testing.T) {
 	cyclicBoundedPlane := geometry.NewCyclicBoundedPlane(100.0, 100.0)
-	qtree := NewQuadTree(cyclicBoundedPlane)
+	qtree := NewPointQuadTree(cyclicBoundedPlane)
 
 	defer qtree.Close()
 
@@ -207,7 +209,7 @@ func TestQuadTreeForCyclicBoundedPlaneWithLeavesIn5thGeneration(t *testing.T) {
 		qtree.Add(item)
 	}
 
-	expected := [2]Item[float64]{item2, item3}
+	expected := [2]Item[geometry.Vec[float64], float64]{item2, item3}
 	for i := 0; i < 100; i++ {
 		foundNeighbors := qtree.FindNeighbors(item1, 1)
 		if !sliceutils.SameElements(foundNeighbors[:], expected[:]) {
@@ -216,7 +218,7 @@ func TestQuadTreeForCyclicBoundedPlaneWithLeavesIn5thGeneration(t *testing.T) {
 	}
 }
 
-func verifyNodeDepth(t *testing.T, node *Node[int], currentDepth, targetDepth int) {
+func verifyNodeDepth(t *testing.T, node *Node[geometry.Vec[int], int], currentDepth, targetDepth int) {
 	if node == nil {
 		return
 	}
@@ -236,5 +238,152 @@ func verifyNodeDepth(t *testing.T, node *Node[int], currentDepth, targetDepth in
 
 	for _, child := range node.childs {
 		verifyNodeDepth(t, child, currentDepth+1, targetDepth)
+	}
+}
+
+func TestQuadTree_RemoveCascadeCompression(t *testing.T) {
+	plane := geometry.NewBoundedPlane(64.0, 64.0)
+	qtree := NewPointQuadTree(plane)
+	defer qtree.Close()
+
+	// Dodaj 4 elementy -> root nadal liść
+	for i := range 4 {
+		qtree.Add(&TestItem[float64]{pos: geometry.Vec[float64]{X: float64(i), Y: float64(i)}})
+	}
+	if !qtree.root.isLeaf() {
+		t.Fatalf("expected root to be leaf after 4 inserts")
+	}
+
+	// 5-ty element -> root się dzieli
+	item5 := &TestItem[float64]{pos: geometry.Vec[float64]{X: 5, Y: 5}}
+	qtree.Add(item5)
+	if qtree.root.isLeaf() {
+		t.Fatalf("expected root to split after 5th insert")
+	}
+
+	// 6,7,8 w tym samym rejonie -> trafiają do jednego dziecka
+	item6 := &TestItem[float64]{pos: geometry.Vec[float64]{X: 6, Y: 6}}
+	item7 := &TestItem[float64]{pos: geometry.Vec[float64]{X: 7, Y: 7}}
+	item8 := &TestItem[float64]{pos: geometry.Vec[float64]{X: 8, Y: 8}}
+	qtree.Add(item6)
+	qtree.Add(item7)
+	qtree.Add(item8)
+
+	child := qtree.root.childs[0]
+	if child == nil {
+		t.Fatalf("expected root.childs[0] to exist")
+	}
+
+	// 9-ty element -> powoduje split childa
+	item9 := &TestItem[float64]{pos: geometry.Vec[float64]{X: 9, Y: 9}}
+	qtree.Add(item9)
+	if child.isLeaf() {
+		t.Fatalf("expected child to split after 9th insert")
+	}
+
+	// Usuwamy item5..9 -> root powinien się skompresować (wrócić do liścia)
+	for _, it := range []*TestItem[float64]{item5, item6, item7, item8, item9} {
+		removed := qtree.Remove(it)
+		if !removed {
+			t.Fatalf("expected %+v to be removed", it)
+		}
+	}
+
+	// root powinien znów być liściem, bo wszystkie dzieci zostały scalone
+	if !qtree.root.isLeaf() {
+		t.Errorf("expected root to compress back to leaf after removing 5..9")
+	}
+}
+
+func TestQuadTree_RemoveNonExistingItem(t *testing.T) {
+	plane := geometry.NewBoundedPlane(64.0, 64.0)
+	qtree := NewPointQuadTree(plane)
+	defer qtree.Close()
+
+	// dodajemy kilka elementów
+	item1 := &TestItem[float64]{pos: geometry.Vec[float64]{X: 1, Y: 1}}
+	item2 := &TestItem[float64]{pos: geometry.Vec[float64]{X: 2, Y: 2}}
+	qtree.Add(item1)
+	qtree.Add(item2)
+
+	// tworzymy element, który ma te same współrzędne co item1,
+	// ale jest inną referencją → nie powinien zostać znaleziony
+	ghost := &TestItem[float64]{pos: geometry.Vec[float64]{X: 1, Y: 1}}
+
+	removed := qtree.Remove(ghost)
+	if removed {
+		t.Fatalf("expected removing ghost item to return false")
+	}
+}
+
+func TestQuadTree_Point_CountDepthAllItemsLeafBoxes(t *testing.T) {
+	plane := geometry.NewBoundedPlane(16.0, 16.0)
+	qtree := NewPointQuadTree(plane)
+	defer qtree.Close()
+
+	// początkowo puste
+	if qtree.Count() != 0 {
+		t.Errorf("expected empty tree count=0, got %d", qtree.Count())
+	}
+	if qtree.Depth() != 1 {
+		t.Errorf("expected depth=1 for empty tree, got %d", qtree.Depth())
+	}
+
+	// dodajemy 4 punkty (root pozostaje liściem)
+	items := []*TestItem[float64]{
+		{pos: geometry.Vec[float64]{X: 1, Y: 1}},
+		{pos: geometry.Vec[float64]{X: 2, Y: 2}},
+		{pos: geometry.Vec[float64]{X: 3, Y: 3}},
+		{pos: geometry.Vec[float64]{X: 4, Y: 4}},
+	}
+	for _, it := range items {
+		qtree.Add(it)
+	}
+	if qtree.Count() != 4 {
+		t.Errorf("expected count=4, got %d", qtree.Count())
+	}
+	if qtree.Depth() != 1 {
+		t.Errorf("expected depth=1 before split, got %d", qtree.Depth())
+	}
+
+	// dodajemy piąty punkt → root się dzieli
+	it5 := &TestItem[float64]{pos: geometry.Vec[float64]{X: 10, Y: 10}}
+	qtree.Add(it5)
+	if qtree.Depth() <= 1 {
+		t.Errorf("expected depth>1 after split, got %d", qtree.Depth())
+	}
+	if qtree.Count() != 5 {
+		t.Errorf("expected count=5, got %d", qtree.Count())
+	}
+
+	// AllItems powinno zawierać dokładnie te 5 punktów
+	all := qtree.AllItems()
+	if len(all) != 5 {
+		t.Errorf("expected 5 items in AllItems, got %d", len(all))
+	}
+	found := false
+	for _, it := range all {
+		if it == it5 {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected AllItems to contain it5")
+	}
+
+	// LeafBoxes powinny przykrywać całą przestrzeń
+	leafs := qtree.LeafBoxes()
+	if len(leafs) < 4 {
+		t.Errorf("expected at least 4 leaf boxes after split, got %d", len(leafs))
+	}
+	for _, lb := range leafs {
+		// sprawdzamy półotwartą logikę:
+		if lb.TopLeft.X < 0 || lb.TopLeft.Y < 0 ||
+			lb.BottomRight.X > plane.Size().X || lb.BottomRight.Y > plane.Size().Y {
+			t.Errorf("leaf box %+v is outside plane bounds", lb)
+		}
+		if lb.TopLeft.X >= lb.BottomRight.X || lb.TopLeft.Y >= lb.BottomRight.Y {
+			t.Errorf("invalid box with non-positive area: %+v", lb)
+		}
 	}
 }

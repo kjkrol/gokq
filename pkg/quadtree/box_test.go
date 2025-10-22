@@ -1,4 +1,4 @@
-package quadcore
+package quadtree
 
 import (
 	"testing"
@@ -141,5 +141,25 @@ func TestBox_intersectsCyclic(t *testing.T) {
 		if !intersection.box1.intersectsAny(wrappedBoxes) {
 			t.Errorf("Box1 %v should intersects with Box2 %v", intersection.box1, intersection.box2)
 		}
+	}
+}
+
+func TestBox_IntersectsAny_ReturnsFalse(t *testing.T) {
+	// bazowy box w lewym górnym rogu
+	base := Box[int]{
+		TopLeft:     geometry.Vec[int]{X: 0, Y: 0},
+		BottomRight: geometry.Vec[int]{X: 10, Y: 10},
+		Center:      geometry.Vec[int]{X: 5, Y: 5},
+	}
+
+	// inne boxy są daleko od base → brak przecięcia
+	others := []Box[int]{
+		{TopLeft: geometry.Vec[int]{X: 20, Y: 20}, BottomRight: geometry.Vec[int]{X: 30, Y: 30}},
+		{TopLeft: geometry.Vec[int]{X: 40, Y: 0}, BottomRight: geometry.Vec[int]{X: 50, Y: 10}},
+		{TopLeft: geometry.Vec[int]{X: 0, Y: 40}, BottomRight: geometry.Vec[int]{X: 10, Y: 50}},
+	}
+
+	if base.intersectsAny(others) {
+		t.Errorf("expected intersectsAny to return false, but got true")
 	}
 }

@@ -1,8 +1,6 @@
-package quadcore
+package quadtree
 
 import (
-	"sort"
-
 	"github.com/kjkrol/gokg/pkg/geometry"
 )
 
@@ -133,9 +131,3 @@ func WrapBoxCyclic[T geometry.SupportedNumeric](
 }
 
 //-------------------------------------------------------------------------
-
-func SortBoxes[T geometry.SupportedNumeric](boxes []Box[T], axis func(geometry.Vec[T]) T) {
-	sort.Slice(boxes, func(i, j int) bool {
-		return axis(boxes[i].TopLeft) < axis(boxes[j].TopLeft)
-	})
-}
