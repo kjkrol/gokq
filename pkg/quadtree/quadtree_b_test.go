@@ -7,16 +7,8 @@ import (
 	"github.com/kjkrol/goku/pkg/sliceutils"
 )
 
-type TestBoxItem[T geometry.SupportedNumeric] struct {
-	box Box[T]
-}
-
-func (ti *TestBoxItem[T]) Value() Box[T] {
-	return ti.box
-}
-
-func newTestBoxItem[T geometry.SupportedNumeric](x1, y1, x2, y2 T) *TestBoxItem[T] {
-	return &TestBoxItem[T]{box: NewBox(
+func newTestBoxItem[T geometry.SupportedNumeric](x1, y1, x2, y2 T) *ExampleItem[T] {
+	return &ExampleItem[T]{spatial: geometry.NewRectangle(
 		geometry.Vec[T]{X: x1, Y: y1},
 		geometry.Vec[T]{X: x2, Y: y2},
 	)}
@@ -24,7 +16,7 @@ func newTestBoxItem[T geometry.SupportedNumeric](x1, y1, x2, y2 T) *TestBoxItem[
 
 func TestQuadTreeBox_FindNeighborsSimple(t *testing.T) {
 	boundedPlane := geometry.NewBoundedPlane(64.0, 64.0)
-	qtree := NewBoxQuadTree(boundedPlane)
+	qtree := NewQuadTree(boundedPlane)
 	defer qtree.Close()
 
 	target := newTestBoxItem(10.0, 10.0, 12.0, 12.0)
@@ -40,7 +32,7 @@ func TestQuadTreeBox_FindNeighborsSimple(t *testing.T) {
 	qtree.Add(item4)
 	qtree.Add(itemFar)
 
-	expected := []Item[Box[float64], float64]{item1, item2, item3, item4}
+	expected := []Item[float64]{item1, item2, item3, item4}
 	neighbors := qtree.FindNeighbors(target, 1.0)
 
 	if !sliceutils.SameElements(neighbors, expected) {
@@ -50,7 +42,7 @@ func TestQuadTreeBox_FindNeighborsSimple(t *testing.T) {
 
 func TestQuadTreeBox_ForBoundedPlane(t *testing.T) {
 	boundedPlane := geometry.NewBoundedPlane(4, 4)
-	qtree := NewBoxQuadTree(boundedPlane)
+	qtree := NewQuadTree(boundedPlane)
 	defer qtree.Close()
 
 	target := newTestBoxItem(0, 0, 1, 1)
@@ -62,7 +54,7 @@ func TestQuadTreeBox_ForBoundedPlane(t *testing.T) {
 	qtree.Add(item2)
 	qtree.Add(item3)
 
-	expected := []Item[Box[int], int]{item1, item2}
+	expected := []Item[int]{item1, item2}
 	neighbors := qtree.FindNeighbors(target, 1)
 
 	if !sliceutils.SameElements(neighbors, expected) {
@@ -72,7 +64,7 @@ func TestQuadTreeBox_ForBoundedPlane(t *testing.T) {
 
 func TestQuadTreeBox_ForCyclicBoundedPlane(t *testing.T) {
 	cyclicPlane := geometry.NewCyclicBoundedPlane(4, 4)
-	qtree := NewBoxQuadTree(cyclicPlane)
+	qtree := NewQuadTree(cyclicPlane)
 	defer qtree.Close()
 
 	target := newTestBoxItem(0, 0, 1, 1)
@@ -87,7 +79,7 @@ func TestQuadTreeBox_ForCyclicBoundedPlane(t *testing.T) {
 	qtree.Add(item4)
 
 	// Przy margin=1 znajdziemy tylko item3 i item4
-	expected := []Item[Box[int], int]{item3, item4}
+	expected := []Item[int]{item3, item4}
 	neighbors := qtree.FindNeighbors(target, 1)
 
 	if !sliceutils.SameElements(neighbors, expected) {
@@ -97,7 +89,7 @@ func TestQuadTreeBox_ForCyclicBoundedPlane(t *testing.T) {
 
 func TestQuadTreeBox_ForCyclicBoundedPlane_WithWraps(t *testing.T) {
 	cyclicPlane := geometry.NewCyclicBoundedPlane(4, 4)
-	qtree := NewBoxQuadTree(cyclicPlane)
+	qtree := NewQuadTree(cyclicPlane)
 	defer qtree.Close()
 
 	target := newTestBoxItem(0, 0, 1, 1)
@@ -112,7 +104,7 @@ func TestQuadTreeBox_ForCyclicBoundedPlane_WithWraps(t *testing.T) {
 	qtree.Add(item4)
 
 	// Przy margin=2 znajdziemy także boxy wrapowane
-	expected := []Item[Box[int], int]{item1, item2, item3, item4}
+	expected := []Item[int]{item1, item2, item3, item4}
 	neighbors := qtree.FindNeighbors(target, 2)
 
 	if !sliceutils.SameElements(neighbors, expected) {
@@ -122,18 +114,18 @@ func TestQuadTreeBox_ForCyclicBoundedPlane_WithWraps(t *testing.T) {
 
 func TestQuadTree_RemoveCascadeCompression_Box(t *testing.T) {
 	plane := geometry.NewBoundedPlane(64.0, 64.0)
-	qtree := NewBoxQuadTree(plane)
+	qtree := NewQuadTree(plane)
 	defer qtree.Close()
 
-	makeBox := func(x, y float64) *TestBoxItem[float64] {
+	makeBox := func(x, y float64) *ExampleItem[float64] {
 		// malutki box (1x1), żeby dało się wcisnąć w child
-		return &TestBoxItem[float64]{box: BuildBox(
+		return &ExampleItem[float64]{spatial: geometry.BuildRectangle(
 			geometry.Vec[float64]{X: x, Y: y}, 0.5,
 		)}
 	}
 
 	// Dodajemy 4 elementy -> root nadal liść
-	items := []*TestBoxItem[float64]{
+	items := []*ExampleItem[float64]{
 		makeBox(1, 1),
 		makeBox(2, 2),
 		makeBox(3, 3),
@@ -174,7 +166,7 @@ func TestQuadTree_RemoveCascadeCompression_Box(t *testing.T) {
 	}
 
 	// Usuwamy item5..9 -> root powinien się skompresować (wrócić do liścia z itemami)
-	for _, it := range []*TestBoxItem[float64]{item5, item6, item7, item8, item9} {
+	for _, it := range []*ExampleItem[float64]{item5, item6, item7, item8, item9} {
 		removed := qtree.Remove(it)
 		if !removed {
 			t.Fatalf("expected %+v to be removed", it)
@@ -189,13 +181,13 @@ func TestQuadTree_RemoveCascadeCompression_Box(t *testing.T) {
 
 func TestQuadTree_BoxItems_LargeStayInParent_SmallGoToChildren(t *testing.T) {
 	plane := geometry.NewBoundedPlane(64.0, 64.0)
-	qtree := NewBoxQuadTree(plane)
+	qtree := NewQuadTree(plane)
 	defer qtree.Close()
 
 	// Dodajemy 6 dużych boxów, każdy obejmuje połowę przestrzeni
 	for i := 0; i < 6; i++ {
-		large := &TestBoxItem[float64]{
-			box: NewBox(
+		large := &ExampleItem[float64]{
+			spatial: geometry.NewRectangle(
 				geometry.Vec[float64]{X: 0, Y: 0},
 				geometry.Vec[float64]{X: 64, Y: 32}, // duży box, nie mieści się w jednym childzie
 			),
@@ -212,14 +204,14 @@ func TestQuadTree_BoxItems_LargeStayInParent_SmallGoToChildren(t *testing.T) {
 	}
 
 	// Teraz dodajemy kilka małych boxów, które zmieszczą się w ćwiartkach
-	small1 := &TestBoxItem[float64]{
-		box: NewBox(
+	small1 := &ExampleItem[float64]{
+		spatial: geometry.NewRectangle(
 			geometry.Vec[float64]{X: 1, Y: 1},
 			geometry.Vec[float64]{X: 2, Y: 2},
 		),
 	}
-	small2 := &TestBoxItem[float64]{
-		box: NewBox(
+	small2 := &ExampleItem[float64]{
+		spatial: geometry.NewRectangle(
 			geometry.Vec[float64]{X: 10, Y: 10},
 			geometry.Vec[float64]{X: 11, Y: 11},
 		),
@@ -247,9 +239,9 @@ func TestQuadTree_BoxItems_LargeStayInParent_SmallGoToChildren(t *testing.T) {
 	}
 }
 
-func TestQuadTree_Box_CountDepthAllItemsLeafBoxes(t *testing.T) {
+func TestQuadTree_Box_CountDepthAllItemsLeafRectangles(t *testing.T) {
 	plane := geometry.NewBoundedPlane(16.0, 16.0)
-	qtree := NewBoxQuadTree(plane)
+	qtree := NewQuadTree(plane)
 	defer qtree.Close()
 
 	// początkowo puste
@@ -261,18 +253,11 @@ func TestQuadTree_Box_CountDepthAllItemsLeafBoxes(t *testing.T) {
 	}
 
 	// dodajemy 2 duże boxy (obejmują większą część przestrzeni, nie zmieszczą się w childach)
-	large1 := &TestBoxItem[float64]{
-		box: NewBox(
-			geometry.Vec[float64]{X: 0, Y: 0},
-			geometry.Vec[float64]{X: 16, Y: 8}, // górna połowa
-		),
-	}
-	large2 := &TestBoxItem[float64]{
-		box: NewBox(
-			geometry.Vec[float64]{X: 0, Y: 8},
-			geometry.Vec[float64]{X: 16, Y: 16}, // dolna połowa
-		),
-	}
+
+	large1 := newTestBoxItem(0., 0, 16, 8) // górna połowa
+
+	large2 := newTestBoxItem(0., 8, 16, 16) // dolna połowa
+
 	qtree.Add(large1)
 	qtree.Add(large2)
 
@@ -285,11 +270,11 @@ func TestQuadTree_Box_CountDepthAllItemsLeafBoxes(t *testing.T) {
 	}
 
 	// dodajemy małe boxy, które zmieszczą się w childach
-	smallBoxes := []*TestBoxItem[float64]{
-		{box: NewBox(geometry.Vec[float64]{X: 1, Y: 1}, geometry.Vec[float64]{X: 2, Y: 2})},
-		{box: NewBox(geometry.Vec[float64]{X: 3, Y: 3}, geometry.Vec[float64]{X: 4, Y: 4})},
-		{box: NewBox(geometry.Vec[float64]{X: 14, Y: 14}, geometry.Vec[float64]{X: 15, Y: 15})},
-		{box: NewBox(geometry.Vec[float64]{X: 12, Y: 1}, geometry.Vec[float64]{X: 13, Y: 2})},
+	smallBoxes := []*ExampleItem[float64]{
+		newTestBoxItem(1., 1, 2, 2),
+		newTestBoxItem(3., 3, 4, 4),
+		newTestBoxItem(14., 14, 15, 15),
+		newTestBoxItem(12., 1, 13, 2),
 	}
 	for _, sb := range smallBoxes {
 		qtree.Add(sb)
@@ -311,7 +296,7 @@ func TestQuadTree_Box_CountDepthAllItemsLeafBoxes(t *testing.T) {
 	}
 
 	// LeafBoxes powinny być >1, bo root się podzielił
-	leafs := qtree.LeafBoxes()
+	leafs := qtree.LeafRectangles()
 	if len(leafs) <= 1 {
 		t.Errorf("expected more than 1 leaf box after split, got %d", len(leafs))
 	}
@@ -325,33 +310,33 @@ func TestQuadTree_Box_CountDepthAllItemsLeafBoxes(t *testing.T) {
 
 func TestSortNeighbors_BottomRightTieBreak(t *testing.T) {
 	plane := geometry.NewBoundedPlane(16.0, 16.0)
-	qtree := NewBoxQuadTree(plane)
+	qtree := NewQuadTree(plane)
 	defer qtree.Close()
 
 	// Box A i B mają identyczne TopLeft
-	a := &TestBoxItem[float64]{box: NewBox(
+	a := &ExampleItem[float64]{spatial: geometry.NewRectangle(
 		geometry.Vec[float64]{X: 1, Y: 1},
 		geometry.Vec[float64]{X: 3, Y: 3},
 	)}
-	b := &TestBoxItem[float64]{box: NewBox(
+	b := &ExampleItem[float64]{spatial: geometry.NewRectangle(
 		geometry.Vec[float64]{X: 1, Y: 1},
 		geometry.Vec[float64]{X: 3, Y: 4}, // różni się tylko BottomRight.Y
 	)}
-	c := &TestBoxItem[float64]{box: NewBox(
+	c := &ExampleItem[float64]{spatial: geometry.NewRectangle(
 		geometry.Vec[float64]{X: 1, Y: 1},
 		geometry.Vec[float64]{X: 4, Y: 3}, // różni się tylko BottomRight.X
 	)}
 
-	items := []Item[Box[float64], float64]{b, a, c}
+	items := []Item[float64]{b, a, c}
 
 	// sortujemy
-	sortNeighbors(items, BoxOps[float64]{})
+	sortNeighbors(items)
 
 	// oczekiwana kolejność:
 	// najpierw a (BottomRight.Y=3),
 	// potem b (BottomRight.Y=4),
 	// na końcu c (BottomRight.Y=3 ale BottomRight.X=4 > 3).
-	expected := []Item[Box[float64], float64]{a, c, b}
+	expected := []Item[float64]{a, c, b}
 
 	for i, it := range items {
 		if it != expected[i] {

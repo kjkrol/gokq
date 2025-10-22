@@ -2,51 +2,47 @@ package quadtree
 
 import "github.com/kjkrol/gokg/pkg/geometry"
 
-type Node[V SpatialValue[T], T geometry.SupportedNumeric] struct {
-	box    Box[T]
-	items  []Item[V, T]
-	parent *Node[V, T]
-	childs []*Node[V, T]
+type Node[T geometry.SupportedNumeric] struct {
+	bounds geometry.Rectangle[T]
+	items  []Item[T]
+	parent *Node[T]
+	childs []*Node[T]
 }
 
-func newNode[V SpatialValue[T], T geometry.SupportedNumeric](box Box[T], parent *Node[V, T]) *Node[V, T] {
-	return &Node[V, T]{box: box, items: make([]Item[V, T], 0), parent: parent}
+func newNode[T geometry.SupportedNumeric](bounds geometry.Rectangle[T], parent *Node[T]) *Node[T] {
+	return &Node[T]{bounds: bounds, items: make([]Item[T], 0), parent: parent}
 }
 
-func (n *Node[V, T]) isLeaf() bool { return len(n.childs) == 0 }
-func (n *Node[V, T]) isNode() bool { return len(n.childs) > 0 }
+func (n *Node[T]) isLeaf() bool { return len(n.childs) == 0 }
+func (n *Node[T]) isNode() bool { return len(n.childs) > 0 }
 
-func (n *Node[V, T]) add(item Item[V, T], ops NeighborOps[V, T]) {
+func (n *Node[T]) add(item Item[T]) {
 	if n.isNode() {
-		if child := n.findFittingChild(ops.BoundsOf(item.Value())); child != nil {
-			child.add(item, ops)
+		if child := n.findFittingChild(item.Value().Bounds()); child != nil {
+			child.add(item)
 			return
 		}
 	}
 	n.items = append(n.items, item)
 	if len(n.items) > CAPACITY && n.isLeaf() {
 		n.createChilds()
-		n.redistribute(ops)
+		n.redistribute()
 	}
 }
 
-func (n *Node[V, T]) remove(item Item[V, T], ops NeighborOps[V, T]) bool {
-	// jeśli to węzeł wewnętrzny, spróbuj zejść do dziecka
+func (n *Node[T]) remove(item Item[T]) bool {
 	if n.isNode() {
-		if child := n.findFittingChild(ops.BoundsOf(item.Value())); child != nil {
-			if child.remove(item, ops) {
-				// po usunięciu sprawdzamy czy dzieci nie są puste
+		if child := n.findFittingChild(item.Value().Bounds()); child != nil {
+			if child.remove(item) {
 				n.tryCompress(CAPACITY)
 				return true
 			}
 		}
 	}
 
-	// sprawdzamy w bieżącym węźle
 	for i, it := range n.items {
-		if it == item { // porównanie referencji
+		if it == item {
 			n.items = append(n.items[:i], n.items[i+1:]...)
-			// jeśli nie ma dzieci i brak itemów → też można oczyścić
 			n.tryCompress(CAPACITY)
 			return true
 		}
@@ -55,43 +51,42 @@ func (n *Node[V, T]) remove(item Item[V, T], ops NeighborOps[V, T]) bool {
 	return false
 }
 
-func (n *Node[V, T]) tryCompress(capacity int) {
+func (n *Node[T]) tryCompress(capacity int) {
 	if !n.isNode() {
 		return
 	}
 
-	// rekurencyjnie zbierz wszystkie itemy w poddrzewie
 	collected := collectItems(n)
-
 	if len(collected) <= capacity {
 		n.items = collected
 		n.childs = nil
 	}
 }
 
-func collectItems[V SpatialValue[T], T geometry.SupportedNumeric](n *Node[V, T]) []Item[V, T] {
-	items := append([]Item[V, T]{}, n.items...)
+func collectItems[T geometry.SupportedNumeric](n *Node[T]) []Item[T] {
+	items := append([]Item[T]{}, n.items...)
 	for _, ch := range n.childs {
 		items = append(items, collectItems(ch)...)
 	}
 	return items
 }
 
-func (n *Node[V, T]) findFittingChild(b Box[T]) *Node[V, T] {
+func (n *Node[T]) findFittingChild(r geometry.Rectangle[T]) *Node[T] {
 	for _, child := range n.childs {
-		if child.box.ContainsBox(b) {
+		if child.bounds.Contains(r) {
 			return child
 		}
 	}
 	return nil
 }
-func (n *Node[V, T]) redistribute(ops NeighborOps[V, T]) {
-	remaining := make([]Item[V, T], 0, len(n.items))
+
+func (n *Node[T]) redistribute() {
+	remaining := make([]Item[T], 0, len(n.items))
 	moved := 0
 
 	for _, item := range n.items {
-		if child := n.findFittingChild(ops.BoundsOf(item.Value())); child != nil {
-			child.add(item, ops)
+		if child := n.findFittingChild(item.Value().Bounds()); child != nil {
+			child.add(item)
 			moved++
 		} else {
 			remaining = append(remaining, item)
@@ -99,10 +94,7 @@ func (n *Node[V, T]) redistribute(ops NeighborOps[V, T]) {
 	}
 	n.items = remaining
 
-	// rollback: jeżeli żaden item nie został przesunięty do dzieci,
-	// to nie ma sensu utrzymywać dzieci
 	if moved == 0 {
-		// scal z powrotem: wszystkie itemy do rodzica
 		for _, ch := range n.childs {
 			n.items = append(n.items, ch.items...)
 		}
@@ -110,15 +102,15 @@ func (n *Node[V, T]) redistribute(ops NeighborOps[V, T]) {
 	}
 }
 
-func (n *Node[V, T]) createChilds() {
-	childBoxes := n.box.Split()
-	n.childs = make([]*Node[V, T], 4)
-	for i, box := range childBoxes {
-		n.childs[i] = newNode(box, n)
+func (n *Node[T]) createChilds() {
+	childRectangles := n.bounds.Split()
+	n.childs = make([]*Node[T], 4)
+	for i, rect := range childRectangles {
+		n.childs[i] = newNode[T](rect, n)
 	}
 }
 
-func (n *Node[V, T]) close() {
+func (n *Node[T]) close() {
 	for _, child := range n.childs {
 		child.close()
 	}
@@ -127,8 +119,8 @@ func (n *Node[V, T]) close() {
 	n.parent = nil
 }
 
-func (n *Node[V, T]) findIntersectingNodesUnique(probe Box[T], set map[*Node[V, T]]struct{}) {
-	if !n.box.Intersects(probe) {
+func (n *Node[T]) findIntersectingNodesUnique(probe geometry.Rectangle[T], set map[*Node[T]]struct{}) {
+	if !n.bounds.Intersects(probe) {
 		return
 	}
 	set[n] = struct{}{}
@@ -137,15 +129,15 @@ func (n *Node[V, T]) findIntersectingNodesUnique(probe Box[T], set map[*Node[V, 
 	}
 }
 
-func (n *Node[V, T]) allItems() []Item[V, T] {
-	items := append([]Item[V, T]{}, n.items...)
+func (n *Node[T]) allItems() []Item[T] {
+	items := append([]Item[T]{}, n.items...)
 	for _, ch := range n.childs {
 		items = append(items, ch.allItems()...)
 	}
 	return items
 }
 
-func (n *Node[V, T]) depth() int {
+func (n *Node[T]) depth() int {
 	if n.isLeaf() {
 		return 1
 	}
@@ -158,13 +150,13 @@ func (n *Node[V, T]) depth() int {
 	return 1 + maxChildDepth
 }
 
-func (n *Node[V, T]) leafBoxes() []Box[T] {
+func (n *Node[T]) leafRectangles() []geometry.Rectangle[T] {
 	if n.isLeaf() {
-		return []Box[T]{n.box}
+		return []geometry.Rectangle[T]{n.bounds}
 	}
-	var boxes []Box[T]
+	var rectangles []geometry.Rectangle[T]
 	for _, ch := range n.childs {
-		boxes = append(boxes, ch.leafBoxes()...)
+		rectangles = append(rectangles, ch.leafRectangles()...)
 	}
-	return boxes
+	return rectangles
 }
