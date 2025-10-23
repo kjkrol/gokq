@@ -17,7 +17,7 @@ func (ei *ExampleItem[T]) Value() geometry.Spatial[T] {
 func ExampleQuadTree_FindNeighbors_targetInTree() {
 	// Create a bounded plane and a quadtree
 	boundedPlane := geometry.NewBoundedPlane(64, 64)
-	qtree := NewQuadTree(boundedPlane)
+	qtree := NewQuadTree(boundedPlane, geometry.BoundingBoxDistanceForPlane(boundedPlane))
 	defer qtree.Close()
 
 	// Add items to the quadtree
@@ -51,7 +51,7 @@ func ExampleQuadTree_FindNeighbors_targetInTree() {
 func ExampleQuadTree_FindNeighbors_targetNotInTree() {
 	// Create a bounded plane and a quadtree
 	boundedPlane := geometry.NewBoundedPlane(64, 64)
-	qtree := NewQuadTree(boundedPlane)
+	qtree := NewQuadTree(boundedPlane, geometry.BoundingBoxDistanceForPlane(boundedPlane))
 	defer qtree.Close()
 
 	// Add items to the quadtree

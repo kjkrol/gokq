@@ -17,7 +17,7 @@ func newTestBoxItem[T geometry.SupportedNumeric](x1, y1, x2, y2 T) *ExampleItem[
 
 func TestQuadTreeBox_FindNeighborsSimple(t *testing.T) {
 	boundedPlane := geometry.NewBoundedPlane(64.0, 64.0)
-	qtree := NewQuadTree(boundedPlane)
+	qtree := NewQuadTree(boundedPlane, geometry.BoundingBoxDistanceForPlane(boundedPlane))
 	defer qtree.Close()
 
 	target := newTestBoxItem(10.0, 10.0, 12.0, 12.0)
@@ -43,7 +43,7 @@ func TestQuadTreeBox_FindNeighborsSimple(t *testing.T) {
 
 func TestQuadTreeBox_ForBoundedPlane(t *testing.T) {
 	boundedPlane := geometry.NewBoundedPlane(4, 4)
-	qtree := NewQuadTree(boundedPlane)
+	qtree := NewQuadTree(boundedPlane, geometry.BoundingBoxDistanceForPlane(boundedPlane))
 	defer qtree.Close()
 
 	target := newTestBoxItem(0, 0, 1, 1)
@@ -65,7 +65,7 @@ func TestQuadTreeBox_ForBoundedPlane(t *testing.T) {
 
 func TestQuadTreeBox_ForCyclicBoundedPlane(t *testing.T) {
 	cyclicPlane := geometry.NewCyclicBoundedPlane(4, 4)
-	qtree := NewQuadTree(cyclicPlane)
+	qtree := NewQuadTree(cyclicPlane, geometry.BoundingBoxDistanceForPlane(cyclicPlane))
 	defer qtree.Close()
 
 	target := newTestBoxItem(0, 0, 1, 1)
@@ -90,7 +90,7 @@ func TestQuadTreeBox_ForCyclicBoundedPlane(t *testing.T) {
 
 func TestQuadTreeBox_ForCyclicBoundedPlane_WithWraps(t *testing.T) {
 	cyclicPlane := geometry.NewCyclicBoundedPlane(4, 4)
-	qtree := NewQuadTree(cyclicPlane)
+	qtree := NewQuadTree(cyclicPlane, geometry.BoundingBoxDistanceForPlane(cyclicPlane))
 	defer qtree.Close()
 
 	target := newTestBoxItem(0, 0, 1, 1)
@@ -115,7 +115,7 @@ func TestQuadTreeBox_ForCyclicBoundedPlane_WithWraps(t *testing.T) {
 
 func TestQuadTree_RemoveCascadeCompression_Box(t *testing.T) {
 	plane := geometry.NewBoundedPlane(64.0, 64.0)
-	qtree := NewQuadTree(plane)
+	qtree := NewQuadTree(plane, geometry.BoundingBoxDistanceForPlane(plane))
 	defer qtree.Close()
 
 	makeBox := func(x, y float64) *ExampleItem[float64] {
@@ -183,7 +183,7 @@ func TestQuadTree_RemoveCascadeCompression_Box(t *testing.T) {
 
 func TestQuadTree_BoxItems_LargeStayInParent_SmallGoToChildren(t *testing.T) {
 	plane := geometry.NewBoundedPlane(64.0, 64.0)
-	qtree := NewQuadTree(plane)
+	qtree := NewQuadTree(plane, geometry.BoundingBoxDistanceForPlane(plane))
 	defer qtree.Close()
 
 	// Dodajemy 6 dużych boxów, każdy obejmuje połowę przestrzeni
@@ -246,7 +246,7 @@ func TestQuadTree_BoxItems_LargeStayInParent_SmallGoToChildren(t *testing.T) {
 
 func TestQuadTree_Box_CountDepthAllItemsLeafRectangles(t *testing.T) {
 	plane := geometry.NewBoundedPlane(16.0, 16.0)
-	qtree := NewQuadTree(plane)
+	qtree := NewQuadTree(plane, geometry.BoundingBoxDistanceForPlane(plane))
 	defer qtree.Close()
 
 	// początkowo puste
@@ -315,7 +315,7 @@ func TestQuadTree_Box_CountDepthAllItemsLeafRectangles(t *testing.T) {
 
 func TestSortNeighbors_BottomRightTieBreak(t *testing.T) {
 	plane := geometry.NewBoundedPlane(16.0, 16.0)
-	qtree := NewQuadTree(plane)
+	qtree := NewQuadTree(plane, geometry.BoundingBoxDistanceForPlane(plane))
 	defer qtree.Close()
 
 	// Box A i B mają identyczne TopLeft

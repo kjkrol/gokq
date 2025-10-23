@@ -13,14 +13,21 @@ type Item[T geometry.SupportedNumeric] interface {
 }
 
 type QuadTree[T geometry.SupportedNumeric] struct {
-	root  *Node[T]
-	plane geometry.Plane[T]
+	root     *Node[T]
+	plane    geometry.Plane[T]
+	distance geometry.Distance[T]
 }
 
-func NewQuadTree[T geometry.SupportedNumeric](plane geometry.Plane[T]) *QuadTree[T] {
+func NewQuadTree[T geometry.SupportedNumeric](
+	plane geometry.Plane[T],
+	distance geometry.Distance[T],
+) *QuadTree[T] {
 	rootBounds := geometry.NewRectangle(geometry.Vec[T]{X: 0, Y: 0}, plane.Size())
-	root := newNode[T](rootBounds, nil)
-	return &QuadTree[T]{root: root, plane: plane}
+	root := newNode(rootBounds, nil)
+	if distance == nil {
+		distance = geometry.BoundingBoxDistanceForPlane(plane)
+	}
+	return &QuadTree[T]{root: root, plane: plane, distance: distance}
 }
 
 func (t *QuadTree[T]) Add(item Item[T]) {
@@ -64,14 +71,14 @@ func (t *QuadTree[T]) FindNeighbors(target Item[T], margin T) []Item[T] {
 	}
 
 	targetValue := target.Value()
-	neighbors := scan[T](neighborNodes, func(it Item[T]) bool {
+	neighbors := scan(neighborNodes, func(it Item[T]) bool {
 		if it == target {
 			return false
 		}
-		return targetValue.DistanceTo(it.Value(), t.plane.Metric) <= margin
+		return t.distance(targetValue, it.Value()) <= margin
 	})
 
-	sortNeighbors[T](neighbors)
+	sortNeighbors(neighbors)
 	return neighbors
 }
 
