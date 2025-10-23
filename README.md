@@ -1,10 +1,8 @@
-# GOKA
+# GOKQ
 
-*aka "Goloang kjkrol algorithms & structures"
+*aka "Goloang kjkrol QuadTree"
 
-The library provides a collection of various algorithms and structures.
-
-- QuadTree
+The library provides QuadTree structure and functions
 
 ## Contributor Recommendations
 
