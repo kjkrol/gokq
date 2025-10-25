@@ -16,18 +16,25 @@ type QuadTree[T geometry.SupportedNumeric] struct {
 	root     *Node[T]
 	plane    geometry.Plane[T]
 	distance geometry.Distance[T]
+	maxDepth int
 }
 
 func NewQuadTree[T geometry.SupportedNumeric](
 	plane geometry.Plane[T],
-	distance geometry.Distance[T],
+	opts ...QuadTreeOption[T],
 ) *QuadTree[T] {
 	rootBounds := geometry.NewRectangle(geometry.Vec[T]{X: 0, Y: 0}, plane.Size())
 	root := newNode(rootBounds, nil)
-	if distance == nil {
-		distance = geometry.BoundingBoxDistanceForPlane(plane)
+	qt := &QuadTree[T]{
+		root:     root,
+		plane:    plane,
+		distance: geometry.BoundingBoxDistanceForPlane(plane),
+		maxDepth: 10,
 	}
-	return &QuadTree[T]{root: root, plane: plane, distance: distance}
+	for _, opt := range opts {
+		opt(qt)
+	}
+	return qt
 }
 
 func (t *QuadTree[T]) Add(item Item[T]) {

@@ -13,7 +13,7 @@ func newTestItem[T geometry.SupportedNumeric](x, y T) *ExampleItem[T] {
 
 func TestQuadTreeFindNeighbors(t *testing.T) {
 	boundedPlane := geometry.NewBoundedPlane(64.0, 64.0)
-	qtree := NewQuadTree(boundedPlane, geometry.BoundingBoxDistanceForPlane(boundedPlane))
+	qtree := NewQuadTree(boundedPlane)
 
 	defer qtree.Close()
 
@@ -47,7 +47,7 @@ func TestQuadTreeFindNeighbors(t *testing.T) {
 
 func TestQuadTreeForBoundedPlane(t *testing.T) {
 	boundedPlane := geometry.NewBoundedPlane(4, 4)
-	qtree := NewQuadTree(boundedPlane, geometry.BoundingBoxDistanceForPlane(boundedPlane))
+	qtree := NewQuadTree(boundedPlane)
 
 	defer qtree.Close()
 
@@ -78,7 +78,7 @@ func TestQuadTreeForBoundedPlane(t *testing.T) {
 
 func TestQuadTreeForCyclicBoundedPlane(t *testing.T) {
 	cyclicBoundedPlane := geometry.NewCyclicBoundedPlane(4, 4)
-	qtree := NewQuadTree(cyclicBoundedPlane, geometry.BoundingBoxDistanceForPlane(cyclicBoundedPlane))
+	qtree := NewQuadTree(cyclicBoundedPlane)
 
 	defer qtree.Close()
 
@@ -113,7 +113,7 @@ func TestQuadTreeForCyclicBoundedPlane(t *testing.T) {
 
 func TestQuadTreeForCyclicBoundedPlaneWithLeavesIn2ndGeneration(t *testing.T) {
 	cyclicBoundedPlane := geometry.NewCyclicBoundedPlane(100, 100)
-	qtree := NewQuadTree(cyclicBoundedPlane, geometry.BoundingBoxDistanceForPlane(cyclicBoundedPlane))
+	qtree := NewQuadTree(cyclicBoundedPlane)
 	defer qtree.Close()
 
 	item1 := newTestItem(0, 0)
@@ -153,7 +153,7 @@ func TestQuadTreeForCyclicBoundedPlaneWithLeavesIn2ndGeneration(t *testing.T) {
 
 func TestQuadTreeForCyclicBoundedPlaneWithLeavesIn5thGeneration(t *testing.T) {
 	cyclicBoundedPlane := geometry.NewCyclicBoundedPlane(100.0, 100.0)
-	qtree := NewQuadTree(cyclicBoundedPlane, geometry.BoundingBoxDistanceForPlane(cyclicBoundedPlane))
+	qtree := NewQuadTree(cyclicBoundedPlane)
 
 	defer qtree.Close()
 
@@ -230,7 +230,7 @@ func verifyNodeDepth(t *testing.T, node *Node[int], currentDepth, targetDepth in
 
 func TestQuadTree_RemoveCascadeCompression(t *testing.T) {
 	plane := geometry.NewBoundedPlane(64.0, 64.0)
-	qtree := NewQuadTree(plane, geometry.BoundingBoxDistanceForPlane(plane))
+	qtree := NewQuadTree(plane)
 	defer qtree.Close()
 
 	// Dodaj 4 elementy -> root nadal liść
@@ -284,7 +284,7 @@ func TestQuadTree_RemoveCascadeCompression(t *testing.T) {
 
 func TestQuadTree_RemoveNonExistingItem(t *testing.T) {
 	plane := geometry.NewBoundedPlane(64.0, 64.0)
-	qtree := NewQuadTree(plane, geometry.BoundingBoxDistanceForPlane(plane))
+	qtree := NewQuadTree(plane)
 	defer qtree.Close()
 
 	// dodajemy kilka elementów
@@ -305,7 +305,7 @@ func TestQuadTree_RemoveNonExistingItem(t *testing.T) {
 
 func TestQuadTree_Point_CountDepthAllItemsLeafRectangles(t *testing.T) {
 	plane := geometry.NewBoundedPlane(16.0, 16.0)
-	qtree := NewQuadTree(plane, geometry.BoundingBoxDistanceForPlane(plane))
+	qtree := NewQuadTree(plane)
 	defer qtree.Close()
 
 	// początkowo puste

@@ -1,0 +1,2 @@
+# Lista rzeczy do poprawy
+1. Dla quadtree zostal wprowadzony parametr `maxDepth`. Nie jest on uzywany. Pomysl jest taki, by okreslal on maksymalna ilosc poziomow drzewa. Innymi slowy od pewnego pozioomu elementy maja byc skladowane z pominieciem CAPACITY dla tego drzewa. Trzeba dodac test sprawdzajacy dzialanie.
