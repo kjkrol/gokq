@@ -1,27 +1,9 @@
 # GOKQ
 
-*aka "Goloang kjkrol QuadTree"
+*aka "Golang kjkrol QuadTree"*
 
-The library provides QuadTree structure and functions
+The library provides a [Quadtree](https://en.wikipedia.org/wiki/Quadtree) data structure  
+for efficient spatial indexing and 2D range queries.
 
-## Contributor Recommendations
-
-When committing changes, please use the following prefixes before the title:
-
-- feat: New functionality.
-
-- fix: Bug fix.
-
-- docs: Changes to documentation.
-
-- style: Changes to code style (e.g. formatting, spaces).
-
-- refactor: Changes to code that improve its structure but do not change its functionality.
-
-- perf: Changes that improve performance.
-
-- test: Adding or changing tests.
-
-- chore: Changes related to project management that do not affect the code or documentation (e.g. updating dependencies).
-
-e.g. `docs: add basic README with project info`
+----
+*[Contributor Recommendations](docs/Contributor_Recommendations.md)
