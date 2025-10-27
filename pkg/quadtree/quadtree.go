@@ -4,26 +4,27 @@ import (
 	"sort"
 
 	"github.com/kjkrol/gokg/pkg/geometry"
+	"github.com/kjkrol/gokg/pkg/geometry/spatial"
 )
 
 const CAPACITY int = 4
 
-type Item[T geometry.SupportedNumeric] interface {
-	Value() geometry.Spatial[T]
+type Item[T spatial.SupportedNumeric] interface {
+	Value() spatial.Spatial[T]
 }
 
-type QuadTree[T geometry.SupportedNumeric] struct {
+type QuadTree[T spatial.SupportedNumeric] struct {
 	root     *Node[T]
 	plane    geometry.Plane[T]
 	distance geometry.Distance[T]
 	maxDepth int
 }
 
-func NewQuadTree[T geometry.SupportedNumeric](
+func NewQuadTree[T spatial.SupportedNumeric](
 	plane geometry.Plane[T],
 	opts ...QuadTreeOption[T],
 ) *QuadTree[T] {
-	rootBounds := geometry.NewRectangle(geometry.Vec[T]{X: 0, Y: 0}, plane.Size())
+	rootBounds := spatial.NewRectangle(spatial.Vec[T]{X: 0, Y: 0}, plane.Size())
 	root := newNode(rootBounds, nil)
 	qt := &QuadTree[T]{
 		root:     root,
@@ -61,12 +62,12 @@ func (t *QuadTree[T]) AllItems() []Item[T] {
 	return t.root.allItems()
 }
 
-func (t *QuadTree[T]) LeafRectangles() []geometry.Rectangle[T] {
+func (t *QuadTree[T]) LeafRectangles() []spatial.Rectangle[T] {
 	return t.root.leafRectangles()
 }
 
 func (t *QuadTree[T]) FindNeighbors(target Item[T], margin T) []Item[T] {
-	probes := target.Value().Probe(margin, t.plane)
+	probes := t.probe(target.Value(), margin)
 
 	neighborSet := make(map[*Node[T]]struct{})
 	for _, p := range probes {
@@ -91,7 +92,7 @@ func (t *QuadTree[T]) FindNeighbors(target Item[T], margin T) []Item[T] {
 
 // ---------------------- helpers ----------------------
 
-func scan[T geometry.SupportedNumeric](
+func scan[T spatial.SupportedNumeric](
 	neighborNodes []*Node[T],
 	predicate func(Item[T]) bool,
 ) []Item[T] {
@@ -106,7 +107,8 @@ func scan[T geometry.SupportedNumeric](
 	return neighborItems
 }
 
-func sortNeighbors[T geometry.SupportedNumeric](items []Item[T]) {
+// TODO: to wyglada na duplikat SortRectanglesBy z rectangle.go
+func sortNeighbors[T spatial.SupportedNumeric](items []Item[T]) {
 	sort.Slice(items, func(i, j int) bool {
 		ai, aj := items[i].Value().Bounds(), items[j].Value().Bounds()
 		if ai.TopLeft.Y != aj.TopLeft.Y {

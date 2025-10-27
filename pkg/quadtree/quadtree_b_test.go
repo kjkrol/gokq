@@ -4,13 +4,14 @@ import (
 	"testing"
 
 	"github.com/kjkrol/gokg/pkg/geometry"
+	"github.com/kjkrol/gokg/pkg/geometry/spatial"
 	"github.com/kjkrol/goku/pkg/sliceutils"
 )
 
-func newTestBoxItem[T geometry.SupportedNumeric](x1, y1, x2, y2 T) *ExampleItem[T] {
-	rect := geometry.NewRectangle(
-		geometry.Vec[T]{X: x1, Y: y1},
-		geometry.Vec[T]{X: x2, Y: y2},
+func newTestBoxItem[T spatial.SupportedNumeric](x1, y1, x2, y2 T) *ExampleItem[T] {
+	rect := spatial.NewRectangle(
+		spatial.Vec[T]{X: x1, Y: y1},
+		spatial.Vec[T]{X: x2, Y: y2},
 	)
 	return &ExampleItem[T]{spatial: &rect}
 }
@@ -120,8 +121,8 @@ func TestQuadTree_RemoveCascadeCompression_Box(t *testing.T) {
 
 	makeBox := func(x, y float64) *ExampleItem[float64] {
 		// malutki box (1x1), żeby dało się wcisnąć w child
-		rect := geometry.BuildRectangle(
-			geometry.Vec[float64]{X: x, Y: y}, 0.5,
+		rect := spatial.BuildRectangle(
+			spatial.Vec[float64]{X: x, Y: y}, 0.5,
 		)
 		return &ExampleItem[float64]{spatial: &rect}
 	}
@@ -188,9 +189,9 @@ func TestQuadTree_BoxItems_LargeStayInParent_SmallGoToChildren(t *testing.T) {
 
 	// Dodajemy 6 dużych boxów, każdy obejmuje połowę przestrzeni
 	for i := 0; i < 6; i++ {
-		rect := geometry.NewRectangle(
-			geometry.Vec[float64]{X: 0, Y: 0},
-			geometry.Vec[float64]{X: 64, Y: 32}, // duży box, nie mieści się w jednym childzie
+		rect := spatial.NewRectangle(
+			spatial.Vec[float64]{X: 0, Y: 0},
+			spatial.Vec[float64]{X: 64, Y: 32}, // duży box, nie mieści się w jednym childzie
 		)
 		large := &ExampleItem[float64]{
 			spatial: &rect,
@@ -207,16 +208,16 @@ func TestQuadTree_BoxItems_LargeStayInParent_SmallGoToChildren(t *testing.T) {
 	}
 
 	// Teraz dodajemy kilka małych boxów, które zmieszczą się w ćwiartkach
-	rectSmall1 := geometry.NewRectangle(
-		geometry.Vec[float64]{X: 1, Y: 1},
-		geometry.Vec[float64]{X: 2, Y: 2},
+	rectSmall1 := spatial.NewRectangle(
+		spatial.Vec[float64]{X: 1, Y: 1},
+		spatial.Vec[float64]{X: 2, Y: 2},
 	)
 	small1 := &ExampleItem[float64]{
 		spatial: &rectSmall1,
 	}
-	rectSmall2 := geometry.NewRectangle(
-		geometry.Vec[float64]{X: 10, Y: 10},
-		geometry.Vec[float64]{X: 11, Y: 11},
+	rectSmall2 := spatial.NewRectangle(
+		spatial.Vec[float64]{X: 10, Y: 10},
+		spatial.Vec[float64]{X: 11, Y: 11},
 	)
 	small2 := &ExampleItem[float64]{
 		spatial: &rectSmall2,
@@ -319,19 +320,19 @@ func TestSortNeighbors_BottomRightTieBreak(t *testing.T) {
 	defer qtree.Close()
 
 	// Box A i B mają identyczne TopLeft
-	rectA := geometry.NewRectangle(
-		geometry.Vec[float64]{X: 1, Y: 1},
-		geometry.Vec[float64]{X: 3, Y: 3},
+	rectA := spatial.NewRectangle(
+		spatial.Vec[float64]{X: 1, Y: 1},
+		spatial.Vec[float64]{X: 3, Y: 3},
 	)
 	a := &ExampleItem[float64]{spatial: &rectA}
-	rectB := geometry.NewRectangle(
-		geometry.Vec[float64]{X: 1, Y: 1},
-		geometry.Vec[float64]{X: 3, Y: 4}, // różni się tylko BottomRight.Y
+	rectB := spatial.NewRectangle(
+		spatial.Vec[float64]{X: 1, Y: 1},
+		spatial.Vec[float64]{X: 3, Y: 4}, // różni się tylko BottomRight.Y
 	)
 	b := &ExampleItem[float64]{spatial: &rectB}
-	rectC := geometry.NewRectangle(
-		geometry.Vec[float64]{X: 1, Y: 1},
-		geometry.Vec[float64]{X: 4, Y: 3}, // różni się tylko BottomRight.X
+	rectC := spatial.NewRectangle(
+		spatial.Vec[float64]{X: 1, Y: 1},
+		spatial.Vec[float64]{X: 4, Y: 3}, // różni się tylko BottomRight.X
 	)
 	c := &ExampleItem[float64]{spatial: &rectC}
 

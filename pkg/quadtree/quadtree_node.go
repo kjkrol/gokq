@@ -1,15 +1,17 @@
 package quadtree
 
-import "github.com/kjkrol/gokg/pkg/geometry"
+import (
+	"github.com/kjkrol/gokg/pkg/geometry/spatial"
+)
 
-type Node[T geometry.SupportedNumeric] struct {
-	bounds geometry.Rectangle[T]
+type Node[T spatial.SupportedNumeric] struct {
+	bounds spatial.Rectangle[T]
 	items  []Item[T]
 	parent *Node[T]
 	childs []*Node[T]
 }
 
-func newNode[T geometry.SupportedNumeric](bounds geometry.Rectangle[T], parent *Node[T]) *Node[T] {
+func newNode[T spatial.SupportedNumeric](bounds spatial.Rectangle[T], parent *Node[T]) *Node[T] {
 	return &Node[T]{bounds: bounds, items: make([]Item[T], 0), parent: parent}
 }
 
@@ -63,7 +65,7 @@ func (n *Node[T]) tryCompress(capacity int) {
 	}
 }
 
-func collectItems[T geometry.SupportedNumeric](n *Node[T]) []Item[T] {
+func collectItems[T spatial.SupportedNumeric](n *Node[T]) []Item[T] {
 	items := append([]Item[T]{}, n.items...)
 	for _, ch := range n.childs {
 		items = append(items, collectItems(ch)...)
@@ -71,7 +73,7 @@ func collectItems[T geometry.SupportedNumeric](n *Node[T]) []Item[T] {
 	return items
 }
 
-func (n *Node[T]) findFittingChild(r geometry.Rectangle[T]) *Node[T] {
+func (n *Node[T]) findFittingChild(r spatial.Rectangle[T]) *Node[T] {
 	for _, child := range n.childs {
 		if child.bounds.Contains(r) {
 			return child
@@ -119,7 +121,9 @@ func (n *Node[T]) close() {
 	n.parent = nil
 }
 
-func (n *Node[T]) findIntersectingNodesUnique(probe geometry.Rectangle[T], set map[*Node[T]]struct{}) {
+// TODO: wydaje mi sie, ze ta metoda jest nie optymalna; dobra dla cyklicznej przestrzeni; ale dla bounded
+// absolutne nie efektywan - trzeba to przemyslec i napisac lepiej (chyba szybka poprawka; ale trzeba sie skupic)
+func (n *Node[T]) findIntersectingNodesUnique(probe spatial.Rectangle[T], set map[*Node[T]]struct{}) {
 	if !n.bounds.Intersects(probe) {
 		return
 	}
@@ -150,11 +154,11 @@ func (n *Node[T]) depth() int {
 	return 1 + maxChildDepth
 }
 
-func (n *Node[T]) leafRectangles() []geometry.Rectangle[T] {
+func (n *Node[T]) leafRectangles() []spatial.Rectangle[T] {
 	if n.isLeaf() {
-		return []geometry.Rectangle[T]{n.bounds}
+		return []spatial.Rectangle[T]{n.bounds}
 	}
-	var rectangles []geometry.Rectangle[T]
+	var rectangles []spatial.Rectangle[T]
 	for _, ch := range n.childs {
 		rectangles = append(rectangles, ch.leafRectangles()...)
 	}
