@@ -77,7 +77,7 @@ func TestRectangle_IntersectsCyclic(t *testing.T) {
 	qtree := NewQuadTree(boundedPlane)
 
 	for _, intersection := range intersects {
-		wrapped := qtree.wrapAABBCyclic(intersection.rect2)
+		wrapped := qtree.createAABBFragmentsIfNeeded(intersection.rect2)
 		if !intersection.rect1.IntersectsAny(wrapped) {
 			t.Errorf("rect1 %v should intersect with rect2 %v", intersection.rect1, intersection.rect2)
 		}
