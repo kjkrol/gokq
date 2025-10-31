@@ -1,17 +1,15 @@
 package quadtree
 
-import (
-	"github.com/kjkrol/gokg/pkg/geometry/spatial"
-)
+import "github.com/kjkrol/gokg/pkg/geometry"
 
-type Node[T spatial.SupportedNumeric] struct {
-	bounds spatial.Rectangle[T]
+type Node[T geometry.SupportedNumeric] struct {
+	bounds geometry.AABB[T]
 	items  []Item[T]
 	parent *Node[T]
 	childs []*Node[T]
 }
 
-func newNode[T spatial.SupportedNumeric](bounds spatial.Rectangle[T], parent *Node[T]) *Node[T] {
+func newNode[T geometry.SupportedNumeric](bounds geometry.AABB[T], parent *Node[T]) *Node[T] {
 	return &Node[T]{bounds: bounds, items: make([]Item[T], 0), parent: parent}
 }
 
@@ -20,7 +18,7 @@ func (n *Node[T]) isNode() bool { return len(n.childs) > 0 }
 
 func (n *Node[T]) add(item Item[T]) {
 	if n.isNode() {
-		if child := n.findFittingChild(item.Value().Bounds()); child != nil {
+		if child := n.findFittingChild(item.Value()); child != nil {
 			child.add(item)
 			return
 		}
@@ -34,7 +32,7 @@ func (n *Node[T]) add(item Item[T]) {
 
 func (n *Node[T]) remove(item Item[T]) bool {
 	if n.isNode() {
-		if child := n.findFittingChild(item.Value().Bounds()); child != nil {
+		if child := n.findFittingChild(item.Value()); child != nil {
 			if child.remove(item) {
 				n.tryCompress(CAPACITY)
 				return true
@@ -65,7 +63,7 @@ func (n *Node[T]) tryCompress(capacity int) {
 	}
 }
 
-func collectItems[T spatial.SupportedNumeric](n *Node[T]) []Item[T] {
+func collectItems[T geometry.SupportedNumeric](n *Node[T]) []Item[T] {
 	items := append([]Item[T]{}, n.items...)
 	for _, ch := range n.childs {
 		items = append(items, collectItems(ch)...)
@@ -73,7 +71,7 @@ func collectItems[T spatial.SupportedNumeric](n *Node[T]) []Item[T] {
 	return items
 }
 
-func (n *Node[T]) findFittingChild(r spatial.Rectangle[T]) *Node[T] {
+func (n *Node[T]) findFittingChild(r geometry.AABB[T]) *Node[T] {
 	for _, child := range n.childs {
 		if child.bounds.Contains(r) {
 			return child
@@ -87,7 +85,7 @@ func (n *Node[T]) redistribute() {
 	moved := 0
 
 	for _, item := range n.items {
-		if child := n.findFittingChild(item.Value().Bounds()); child != nil {
+		if child := n.findFittingChild(item.Value()); child != nil {
 			child.add(item)
 			moved++
 		} else {
@@ -108,7 +106,7 @@ func (n *Node[T]) createChilds() {
 	childRectangles := n.bounds.Split()
 	n.childs = make([]*Node[T], 4)
 	for i, rect := range childRectangles {
-		n.childs[i] = newNode[T](rect, n)
+		n.childs[i] = newNode(rect, n)
 	}
 }
 
@@ -123,7 +121,7 @@ func (n *Node[T]) close() {
 
 // TODO: wydaje mi sie, ze ta metoda jest nie optymalna; dobra dla cyklicznej przestrzeni; ale dla bounded
 // absolutne nie efektywan - trzeba to przemyslec i napisac lepiej (chyba szybka poprawka; ale trzeba sie skupic)
-func (n *Node[T]) findIntersectingNodesUnique(probe spatial.Rectangle[T], set map[*Node[T]]struct{}) {
+func (n *Node[T]) findIntersectingNodesUnique(probe geometry.AABB[T], set map[*Node[T]]struct{}) {
 	if !n.bounds.Intersects(probe) {
 		return
 	}
@@ -154,11 +152,11 @@ func (n *Node[T]) depth() int {
 	return 1 + maxChildDepth
 }
 
-func (n *Node[T]) leafRectangles() []spatial.Rectangle[T] {
+func (n *Node[T]) leafRectangles() []geometry.AABB[T] {
 	if n.isLeaf() {
-		return []spatial.Rectangle[T]{n.bounds}
+		return []geometry.AABB[T]{n.bounds}
 	}
-	var rectangles []spatial.Rectangle[T]
+	var rectangles []geometry.AABB[T]
 	for _, ch := range n.childs {
 		rectangles = append(rectangles, ch.leafRectangles()...)
 	}

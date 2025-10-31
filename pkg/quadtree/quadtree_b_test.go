@@ -4,16 +4,20 @@ import (
 	"testing"
 
 	"github.com/kjkrol/gokg/pkg/geometry"
-	"github.com/kjkrol/gokg/pkg/geometry/spatial"
 	"github.com/kjkrol/goku/pkg/sliceutils"
 )
 
-func newTestBoxItem[T spatial.SupportedNumeric](x1, y1, x2, y2 T) *ExampleItem[T] {
-	rect := spatial.NewRectangle(
-		spatial.Vec[T]{X: x1, Y: y1},
-		spatial.Vec[T]{X: x2, Y: y2},
-	)
-	return &ExampleItem[T]{spatial: &rect}
+type AABBItem[T geometry.SupportedNumeric] struct {
+	aabb geometry.AABB[T]
+}
+
+func (i *AABBItem[T]) Value() geometry.AABB[T] {
+	return i.aabb
+}
+
+func newRectItem[T geometry.SupportedNumeric](x1, y1, x2, y2 T) *ShapeItem[T] {
+	rect := geometry.NewRect(geometry.NewVec(x1, y1), x2, y2)
+	return &ShapeItem[T]{shape: &rect}
 }
 
 func TestQuadTreeBox_FindNeighborsSimple(t *testing.T) {
@@ -21,12 +25,12 @@ func TestQuadTreeBox_FindNeighborsSimple(t *testing.T) {
 	qtree := NewQuadTree(boundedPlane)
 	defer qtree.Close()
 
-	target := newTestBoxItem(10.0, 10.0, 12.0, 12.0)
-	item1 := newTestBoxItem(10.0, 8.0, 12.0, 10.0)  // nad targetem
-	item2 := newTestBoxItem(8.0, 10.0, 10.0, 12.0)  // z lewej
-	item3 := newTestBoxItem(12.0, 10.0, 14.0, 12.0) // z prawej
-	item4 := newTestBoxItem(10.0, 12.0, 12.0, 14.0) // pod spodem
-	itemFar := newTestBoxItem(30.0, 30.0, 32.0, 32.0)
+	target := newRectItem(10.0, 10.0, 12.0, 12.0)
+	item1 := newRectItem(10.0, 8.0, 12.0, 10.0)  // nad targetem
+	item2 := newRectItem(8.0, 10.0, 10.0, 12.0)  // z lewej
+	item3 := newRectItem(12.0, 10.0, 14.0, 12.0) // z prawej
+	item4 := newRectItem(10.0, 12.0, 12.0, 14.0) // pod spodem
+	itemFar := newRectItem(30.0, 30.0, 32.0, 32.0)
 
 	qtree.Add(item1)
 	qtree.Add(item2)
@@ -47,10 +51,10 @@ func TestQuadTreeBox_ForBoundedPlane(t *testing.T) {
 	qtree := NewQuadTree(boundedPlane)
 	defer qtree.Close()
 
-	target := newTestBoxItem(0, 0, 1, 1)
-	item1 := newTestBoxItem(0, 1, 1, 2)
-	item2 := newTestBoxItem(1, 0, 2, 1)
-	item3 := newTestBoxItem(3, 0, 4, 1)
+	target := newRectItem(0, 0, 1, 1)
+	item1 := newRectItem(0, 1, 1, 2)
+	item2 := newRectItem(1, 0, 2, 1)
+	item3 := newRectItem(3, 0, 4, 1)
 
 	qtree.Add(item1)
 	qtree.Add(item2)
@@ -69,11 +73,11 @@ func TestQuadTreeBox_ForCyclicBoundedPlane(t *testing.T) {
 	qtree := NewQuadTree(cyclicPlane)
 	defer qtree.Close()
 
-	target := newTestBoxItem(0, 0, 1, 1)
-	item1 := newTestBoxItem(0, 3, 1, 4) // wrap od góry (ale przy margin=1 nie wejdzie)
-	item2 := newTestBoxItem(3, 0, 4, 1) // wrap od lewej (ale przy margin=1 nie wejdzie)
-	item3 := newTestBoxItem(1, 0, 2, 1) // normalny sąsiad
-	item4 := newTestBoxItem(0, 1, 1, 2) // normalny sąsiad
+	target := newRectItem(0, 0, 1, 1)
+	item1 := newRectItem(0, 3, 1, 4) // wrap od góry (ale przy margin=1 nie wejdzie)
+	item2 := newRectItem(3, 0, 4, 1) // wrap od lewej (ale przy margin=1 nie wejdzie)
+	item3 := newRectItem(1, 0, 2, 1) // normalny sąsiad
+	item4 := newRectItem(0, 1, 1, 2) // normalny sąsiad
 
 	qtree.Add(item1)
 	qtree.Add(item2)
@@ -94,11 +98,11 @@ func TestQuadTreeBox_ForCyclicBoundedPlane_WithWraps(t *testing.T) {
 	qtree := NewQuadTree(cyclicPlane)
 	defer qtree.Close()
 
-	target := newTestBoxItem(0, 0, 1, 1)
-	item1 := newTestBoxItem(0, 3, 1, 4) // wrap od góry
-	item2 := newTestBoxItem(3, 0, 4, 1) // wrap od lewej
-	item3 := newTestBoxItem(1, 0, 2, 1) // normalny sąsiad
-	item4 := newTestBoxItem(0, 1, 1, 2) // normalny sąsiad
+	target := newRectItem(0, 0, 1, 1)
+	item1 := newRectItem(0, 3, 1, 4) // wrap od góry
+	item2 := newRectItem(3, 0, 4, 1) // wrap od lewej
+	item3 := newRectItem(1, 0, 2, 1) // normalny sąsiad
+	item4 := newRectItem(0, 1, 1, 2) // normalny sąsiad
 
 	qtree.Add(item1)
 	qtree.Add(item2)
@@ -119,16 +123,16 @@ func TestQuadTree_RemoveCascadeCompression_Box(t *testing.T) {
 	qtree := NewQuadTree(plane)
 	defer qtree.Close()
 
-	makeBox := func(x, y float64) *ExampleItem[float64] {
+	makeBox := func(x, y float64) *AABBItem[float64] {
 		// malutki box (1x1), żeby dało się wcisnąć w child
-		rect := spatial.BuildRectangle(
-			spatial.Vec[float64]{X: x, Y: y}, 0.5,
+		rect := geometry.BuildAABB(
+			geometry.Vec[float64]{X: x, Y: y}, 0.5,
 		)
-		return &ExampleItem[float64]{spatial: &rect}
+		return &AABBItem[float64]{aabb: rect}
 	}
 
 	// Dodajemy 4 elementy -> root nadal liść
-	items := []*ExampleItem[float64]{
+	items := []*AABBItem[float64]{
 		makeBox(1, 1),
 		makeBox(2, 2),
 		makeBox(3, 3),
@@ -169,7 +173,7 @@ func TestQuadTree_RemoveCascadeCompression_Box(t *testing.T) {
 	}
 
 	// Usuwamy item5..9 -> root powinien się skompresować (wrócić do liścia z itemami)
-	for _, it := range []*ExampleItem[float64]{item5, item6, item7, item8, item9} {
+	for _, it := range []*AABBItem[float64]{item5, item6, item7, item8, item9} {
 		removed := qtree.Remove(it)
 		if !removed {
 			t.Fatalf("expected %+v to be removed", it)
@@ -189,12 +193,12 @@ func TestQuadTree_BoxItems_LargeStayInParent_SmallGoToChildren(t *testing.T) {
 
 	// Dodajemy 6 dużych boxów, każdy obejmuje połowę przestrzeni
 	for i := 0; i < 6; i++ {
-		rect := spatial.NewRectangle(
-			spatial.Vec[float64]{X: 0, Y: 0},
-			spatial.Vec[float64]{X: 64, Y: 32}, // duży box, nie mieści się w jednym childzie
+		aabb := geometry.NewAABB(
+			geometry.Vec[float64]{X: 0, Y: 0},
+			geometry.Vec[float64]{X: 64, Y: 32}, // duży box, nie mieści się w jednym childzie
 		)
-		large := &ExampleItem[float64]{
-			spatial: &rect,
+		large := &AABBItem[float64]{
+			aabb: aabb,
 		}
 		qtree.Add(large)
 	}
@@ -208,19 +212,19 @@ func TestQuadTree_BoxItems_LargeStayInParent_SmallGoToChildren(t *testing.T) {
 	}
 
 	// Teraz dodajemy kilka małych boxów, które zmieszczą się w ćwiartkach
-	rectSmall1 := spatial.NewRectangle(
-		spatial.Vec[float64]{X: 1, Y: 1},
-		spatial.Vec[float64]{X: 2, Y: 2},
+	aabbSmall1 := geometry.NewAABB(
+		geometry.Vec[float64]{X: 1, Y: 1},
+		geometry.Vec[float64]{X: 2, Y: 2},
 	)
-	small1 := &ExampleItem[float64]{
-		spatial: &rectSmall1,
+	small1 := &AABBItem[float64]{
+		aabb: aabbSmall1,
 	}
-	rectSmall2 := spatial.NewRectangle(
-		spatial.Vec[float64]{X: 10, Y: 10},
-		spatial.Vec[float64]{X: 11, Y: 11},
+	aabbSmall2 := geometry.NewAABB(
+		geometry.Vec[float64]{X: 10, Y: 10},
+		geometry.Vec[float64]{X: 11, Y: 11},
 	)
-	small2 := &ExampleItem[float64]{
-		spatial: &rectSmall2,
+	small2 := &AABBItem[float64]{
+		aabb: aabbSmall2,
 	}
 	qtree.Add(small1)
 	qtree.Add(small2)
@@ -260,9 +264,9 @@ func TestQuadTree_Box_CountDepthAllItemsLeafRectangles(t *testing.T) {
 
 	// dodajemy 2 duże boxy (obejmują większą część przestrzeni, nie zmieszczą się w childach)
 
-	large1 := newTestBoxItem(0., 0, 16, 8) // górna połowa
+	large1 := newRectItem(0., 0, 16, 8) // górna połowa
 
-	large2 := newTestBoxItem(0., 8, 16, 16) // dolna połowa
+	large2 := newRectItem(0., 8, 16, 16) // dolna połowa
 
 	qtree.Add(large1)
 	qtree.Add(large2)
@@ -276,11 +280,11 @@ func TestQuadTree_Box_CountDepthAllItemsLeafRectangles(t *testing.T) {
 	}
 
 	// dodajemy małe boxy, które zmieszczą się w childach
-	smallBoxes := []*ExampleItem[float64]{
-		newTestBoxItem(1., 1, 2, 2),
-		newTestBoxItem(3., 3, 4, 4),
-		newTestBoxItem(14., 14, 15, 15),
-		newTestBoxItem(12., 1, 13, 2),
+	smallBoxes := []*ShapeItem[float64]{
+		newRectItem(1., 1, 2, 2),
+		newRectItem(3., 3, 4, 4),
+		newRectItem(14., 14, 15, 15),
+		newRectItem(12., 1, 13, 2),
 	}
 	for _, sb := range smallBoxes {
 		qtree.Add(sb)
@@ -320,21 +324,21 @@ func TestSortNeighbors_BottomRightTieBreak(t *testing.T) {
 	defer qtree.Close()
 
 	// Box A i B mają identyczne TopLeft
-	rectA := spatial.NewRectangle(
-		spatial.Vec[float64]{X: 1, Y: 1},
-		spatial.Vec[float64]{X: 3, Y: 3},
+	aabb1 := geometry.NewAABB(
+		geometry.Vec[float64]{X: 1, Y: 1},
+		geometry.Vec[float64]{X: 3, Y: 3},
 	)
-	a := &ExampleItem[float64]{spatial: &rectA}
-	rectB := spatial.NewRectangle(
-		spatial.Vec[float64]{X: 1, Y: 1},
-		spatial.Vec[float64]{X: 3, Y: 4}, // różni się tylko BottomRight.Y
+	a := &AABBItem[float64]{aabb: aabb1}
+	aabb2 := geometry.NewAABB(
+		geometry.Vec[float64]{X: 1, Y: 1},
+		geometry.Vec[float64]{X: 3, Y: 4}, // różni się tylko BottomRight.Y
 	)
-	b := &ExampleItem[float64]{spatial: &rectB}
-	rectC := spatial.NewRectangle(
-		spatial.Vec[float64]{X: 1, Y: 1},
-		spatial.Vec[float64]{X: 4, Y: 3}, // różni się tylko BottomRight.X
+	b := &AABBItem[float64]{aabb: aabb2}
+	aabb3 := geometry.NewAABB(
+		geometry.Vec[float64]{X: 1, Y: 1},
+		geometry.Vec[float64]{X: 4, Y: 3}, // różni się tylko BottomRight.X
 	)
-	c := &ExampleItem[float64]{spatial: &rectC}
+	c := &AABBItem[float64]{aabb: aabb3}
 
 	items := []Item[float64]{b, a, c}
 

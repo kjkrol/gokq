@@ -4,11 +4,10 @@ import (
 	"fmt"
 
 	"github.com/kjkrol/gokg/pkg/geometry"
-	"github.com/kjkrol/gokg/pkg/geometry/spatial"
 )
 
-func newRectangleSpatial[T spatial.SupportedNumeric](topLeft, bottomRight spatial.Vec[T]) spatial.Spatial[T] {
-	rect := spatial.NewRectangle(topLeft, bottomRight)
+func newRectShape[T geometry.SupportedNumeric](topLeft geometry.Vec[T], width, height T) geometry.Shape[T] {
+	rect := geometry.NewRect(topLeft, width, height)
 	return &rect
 }
 
@@ -19,21 +18,24 @@ func ExampleQuadTree() {
 	defer qtree.Close()
 
 	// Dodajemy kilka obiektów jako boxy 1x1
-	items := []*ExampleItem[int]{
-		{spatial: newRectangleSpatial(spatial.Vec[int]{X: 32, Y: 33}, spatial.Vec[int]{X: 10, Y: 5})},
-		{spatial: newRectangleSpatial(spatial.Vec[int]{X: 31, Y: 32}, spatial.Vec[int]{X: 11, Y: 12})},
-		{spatial: newRectangleSpatial(spatial.Vec[int]{X: 33, Y: 32}, spatial.Vec[int]{X: 40, Y: 13})},
-		{spatial: newRectangleSpatial(spatial.Vec[int]{X: 32, Y: 31}, spatial.Vec[int]{X: 33, Y: 32})}, // sąsiad (góra)
-		{spatial: newRectangleSpatial(spatial.Vec[int]{X: 32, Y: 33}, spatial.Vec[int]{X: 33, Y: 34})}, // sąsiad (dół)
-		{spatial: newRectangleSpatial(spatial.Vec[int]{X: 31, Y: 32}, spatial.Vec[int]{X: 32, Y: 33})}, // sąsiad (lewo)
-		{spatial: newRectangleSpatial(spatial.Vec[int]{X: 33, Y: 32}, spatial.Vec[int]{X: 34, Y: 33})}, // sąsiad (prawo)
+	items := []*ShapeItem[int]{
+		{shape: newRectShape(geometry.NewVec(32, 30), 1, 1)}, // wyzej
+		{shape: newRectShape(geometry.NewVec(31, 31), 1, 1)}, // lewy górny
+		{shape: newRectShape(geometry.NewVec(32, 31), 1, 1)}, // góra
+		{shape: newRectShape(geometry.NewVec(33, 31), 1, 1)}, // prawy górny
+		{shape: newRectShape(geometry.NewVec(31, 32), 1, 1)}, // lewo
+		{shape: newRectShape(geometry.NewVec(33, 32), 1, 1)}, // prawo
+		{shape: newRectShape(geometry.NewVec(31, 33), 1, 1)}, // lewy dolny
+		{shape: newRectShape(geometry.NewVec(32, 33), 1, 1)}, // dół
+		{shape: newRectShape(geometry.NewVec(33, 33), 1, 1)}, // prawy dolny
+		{shape: newRectShape(geometry.NewVec(32, 34), 1, 1)}, // nizej
 	}
 	for _, item := range items {
 		qtree.Add(item)
 	}
 
 	// Wybieramy target
-	target := &ExampleItem[int]{spatial: newRectangleSpatial(spatial.Vec[int]{X: 32, Y: 32}, spatial.Vec[int]{X: 33, Y: 33})}
+	target := &ShapeItem[int]{shape: newRectShape(geometry.NewVec(32, 32), 1, 1)}
 
 	// Szukamy sąsiadów targeta z marginesem 0 (czyli boxy przecinające się dokładnie z nim)
 	neighbors := qtree.FindNeighbors(target, 0)
@@ -44,10 +46,14 @@ func ExampleQuadTree() {
 	}
 
 	// Output:
+	// {(31,31) (32,32) (31,31)}
 	// {(32,31) (33,32) (32,31)}
+	// {(33,31) (34,32) (33,31)}
 	// {(31,32) (32,33) (31,32)}
 	// {(33,32) (34,33) (33,32)}
+	// {(31,33) (32,34) (31,33)}
 	// {(32,33) (33,34) (32,33)}
+	// {(33,33) (34,34) (33,33)}
 
 }
 
@@ -60,24 +66,24 @@ func ExampleQuadTree_largeBoxes() {
 	defer qtree.Close()
 
 	// Dodajemy boxy 2x2
-	items := []*ExampleItem[float64]{
-		{spatial: newRectangleSpatial(spatial.Vec[float64]{X: 9, Y: 7}, spatial.Vec[float64]{X: 11, Y: 9})},   // powyżej w odległości 0
-		{spatial: newRectangleSpatial(spatial.Vec[float64]{X: 9, Y: 11}, spatial.Vec[float64]{X: 11, Y: 13})}, // poniżej w odległości 0
-		{spatial: newRectangleSpatial(spatial.Vec[float64]{X: 7, Y: 9}, spatial.Vec[float64]{X: 9, Y: 11})},   // z lewej w odległości 0
-		{spatial: newRectangleSpatial(spatial.Vec[float64]{X: 11, Y: 9}, spatial.Vec[float64]{X: 13, Y: 11})}, // z prawej w odległości 0
-		{spatial: newRectangleSpatial(spatial.Vec[float64]{X: 9, Y: 4}, spatial.Vec[float64]{X: 11, Y: 6})},   // powyżej w odległości 3
-		{spatial: newRectangleSpatial(spatial.Vec[float64]{X: 9, Y: 14}, spatial.Vec[float64]{X: 11, Y: 16})}, // poniżej w odległości 3
-		{spatial: newRectangleSpatial(spatial.Vec[float64]{X: 4, Y: 9}, spatial.Vec[float64]{X: 6, Y: 11})},   // z lewej w odległości 3
-		{spatial: newRectangleSpatial(spatial.Vec[float64]{X: 14, Y: 9}, spatial.Vec[float64]{X: 16, Y: 11})}, // z prawej w odległości 3
-		{spatial: newRectangleSpatial(spatial.Vec[float64]{X: 9, Y: 5}, spatial.Vec[float64]{X: 11, Y: 7})},   // powyzej w odleglosci 2
-		{spatial: newRectangleSpatial(spatial.Vec[float64]{X: 6, Y: 6}, spatial.Vec[float64]{X: 8, Y: 8})},    // powyzej w odleglosci 2
+	items := []*ShapeItem[float64]{
+		{shape: newRectShape(geometry.NewVec(9.0, 7), 2.0, 2.0)},  // powyżej w odległości 0
+		{shape: newRectShape(geometry.NewVec(9.0, 11), 2.0, 2.0)}, // poniżej w odległości 0
+		{shape: newRectShape(geometry.NewVec(7.0, 9), 2.0, 2.0)},  // z lewej w odległości 0
+		{shape: newRectShape(geometry.NewVec(11.0, 9), 2.0, 2.0)}, // z prawej w odległości 0
+		{shape: newRectShape(geometry.NewVec(9.0, 4), 2.0, 2.0)},  // powyżej w odległości 3
+		{shape: newRectShape(geometry.NewVec(9.0, 14), 2.0, 2.0)}, // poniżej w odległości 3
+		{shape: newRectShape(geometry.NewVec(4.0, 9), 2.0, 2.0)},  // z lewej w odległości 3
+		{shape: newRectShape(geometry.NewVec(14.0, 9), 2.0, 2.0)}, // z prawej w odległości 3
+		{shape: newRectShape(geometry.NewVec(9.0, 5), 2.0, 2.0)},  // powyzej w odleglosci 2
+		{shape: newRectShape(geometry.NewVec(6.0, 6), 2.0, 2.0)},  // powyzej w odleglosci 2
 	}
 	for _, item := range items {
 		qtree.Add(item)
 	}
 
 	// Target to pierwszy box
-	target := &ExampleItem[float64]{spatial: newRectangleSpatial(spatial.Vec[float64]{X: 9, Y: 9}, spatial.Vec[float64]{X: 11, Y: 11})}
+	target := &ShapeItem[float64]{shape: newRectShape(geometry.NewVec(9.0, 9), 2.0, 2.0)}
 
 	// Szukamy sąsiadów targeta z marginesem 1.5
 	neighbors := qtree.FindNeighbors(target, 1.5)

@@ -4,15 +4,18 @@ import (
 	"fmt"
 
 	"github.com/kjkrol/gokg/pkg/geometry"
-	"github.com/kjkrol/gokg/pkg/geometry/spatial"
 )
 
-type ExampleItem[T spatial.SupportedNumeric] struct {
-	spatial spatial.Spatial[T]
+type ShapeItem[T geometry.SupportedNumeric] struct {
+	shape geometry.Shape[T]
 }
 
-func (ei *ExampleItem[T]) Value() spatial.Spatial[T] {
-	return ei.spatial
+func (si *ShapeItem[T]) Value() geometry.AABB[T] {
+	return si.shape.Bounds()
+}
+
+func (si *ShapeItem[T]) String() string {
+	return si.shape.String()
 }
 
 func ExampleQuadTree_FindNeighbors_targetInTree() {
@@ -22,12 +25,12 @@ func ExampleQuadTree_FindNeighbors_targetInTree() {
 	defer qtree.Close()
 
 	// Add items to the quadtree
-	items := []*ExampleItem[int]{
-		{spatial: &spatial.Vec[int]{X: 32, Y: 32}},
-		{spatial: &spatial.Vec[int]{X: 32, Y: 31}},
-		{spatial: &spatial.Vec[int]{X: 32, Y: 33}},
-		{spatial: &spatial.Vec[int]{X: 31, Y: 32}},
-		{spatial: &spatial.Vec[int]{X: 33, Y: 32}},
+	items := []*ShapeItem[int]{
+		{shape: &geometry.Vec[int]{X: 32, Y: 32}},
+		{shape: &geometry.Vec[int]{X: 32, Y: 31}},
+		{shape: &geometry.Vec[int]{X: 32, Y: 33}},
+		{shape: &geometry.Vec[int]{X: 31, Y: 32}},
+		{shape: &geometry.Vec[int]{X: 33, Y: 32}},
 	}
 	for _, item := range items {
 		qtree.Add(item)
@@ -39,7 +42,7 @@ func ExampleQuadTree_FindNeighbors_targetInTree() {
 
 	// Print the neighbors
 	for _, neighbor := range neighbors {
-		fmt.Println(neighbor.Value())
+		fmt.Println(neighbor)
 	}
 
 	// Output:
@@ -56,24 +59,24 @@ func ExampleQuadTree_FindNeighbors_targetNotInTree() {
 	defer qtree.Close()
 
 	// Add items to the quadtree
-	items := []*ExampleItem[int]{
-		{spatial: &spatial.Vec[int]{X: 32, Y: 32}},
-		{spatial: &spatial.Vec[int]{X: 32, Y: 31}},
-		{spatial: &spatial.Vec[int]{X: 32, Y: 33}},
-		{spatial: &spatial.Vec[int]{X: 31, Y: 32}},
-		{spatial: &spatial.Vec[int]{X: 33, Y: 32}},
+	items := []*ShapeItem[int]{
+		{shape: &geometry.Vec[int]{X: 32, Y: 32}},
+		{shape: &geometry.Vec[int]{X: 32, Y: 31}},
+		{shape: &geometry.Vec[int]{X: 32, Y: 33}},
+		{shape: &geometry.Vec[int]{X: 31, Y: 32}},
+		{shape: &geometry.Vec[int]{X: 33, Y: 32}},
 	}
 	for _, item := range items {
 		qtree.Add(item)
 	}
 
 	// Find neighbors of a target item
-	target := &ExampleItem[int]{spatial: &spatial.Vec[int]{X: 32, Y: 32}}
+	target := &ShapeItem[int]{shape: &geometry.Vec[int]{X: 32, Y: 32}}
 	neighbors := qtree.FindNeighbors(target, 1)
 
 	// Print the neighbors
 	for _, neighbor := range neighbors {
-		fmt.Println(neighbor.Value())
+		fmt.Println(neighbor)
 	}
 
 	// Output:

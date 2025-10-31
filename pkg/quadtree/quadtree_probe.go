@@ -2,27 +2,26 @@ package quadtree
 
 import (
 	"github.com/kjkrol/gokg/pkg/geometry"
-	"github.com/kjkrol/gokg/pkg/geometry/spatial"
 )
 
-func (t *QuadTree[T]) probe(spatialItem spatial.Spatial[T], margin T) []spatial.Rectangle[T] {
-	probe := spatialItem.Bounds().Expand(margin)
-	rectangles := []spatial.Rectangle[T]{probe}
+func (t *QuadTree[T]) probe(aabb geometry.AABB[T], margin T) []geometry.AABB[T] {
+	probe := aabb.Expand(margin)
+	rectangles := []geometry.AABB[T]{probe}
 	if t.plane.Name() == "cyclic" {
-		rectangles = append(rectangles, t.wrapRectangleCyclic(probe)...)
+		rectangles = append(rectangles, t.wrapAABBCyclic(probe)...)
 	}
 	return rectangles
 }
 
-func (t *QuadTree[T]) wrapRectangleCyclic(
-	r spatial.Rectangle[T],
-) []spatial.Rectangle[T] {
-	var wrappedRectangles []spatial.Rectangle[T]
+func (t *QuadTree[T]) wrapAABBCyclic(
+	r geometry.AABB[T],
+) []geometry.AABB[T] {
+	var wrappedRectangles []geometry.AABB[T]
 	var size = t.plane.Size()
 	var contains = t.plane.Contains
 
 	// Predefined offset values for wrapping
-	offsets := []spatial.Vec[T]{
+	offsets := []geometry.Vec[T]{
 		{X: size.X, Y: 0},      // Shift right
 		{X: 0, Y: size.Y},      // Shift down
 		{X: size.X, Y: size.Y}, // Shift right-down
@@ -32,7 +31,7 @@ func (t *QuadTree[T]) wrapRectangleCyclic(
 
 	// Generate wrapped versions for each offset
 	for _, offset := range offsets {
-		wrapped := spatial.Rectangle[T]{
+		wrapped := geometry.AABB[T]{
 			TopLeft:     r.TopLeft,
 			BottomRight: r.BottomRight,
 			Center:      r.Center,

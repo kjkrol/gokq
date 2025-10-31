@@ -4,27 +4,26 @@ import (
 	"sort"
 
 	"github.com/kjkrol/gokg/pkg/geometry"
-	"github.com/kjkrol/gokg/pkg/geometry/spatial"
 )
 
 const CAPACITY int = 4
 
-type Item[T spatial.SupportedNumeric] interface {
-	Value() spatial.Spatial[T]
+type Item[T geometry.SupportedNumeric] interface {
+	Value() geometry.AABB[T]
 }
 
-type QuadTree[T spatial.SupportedNumeric] struct {
+type QuadTree[T geometry.SupportedNumeric] struct {
 	root     *Node[T]
 	plane    geometry.Plane[T]
 	distance geometry.Distance[T]
 	maxDepth int
 }
 
-func NewQuadTree[T spatial.SupportedNumeric](
+func NewQuadTree[T geometry.SupportedNumeric](
 	plane geometry.Plane[T],
 	opts ...QuadTreeOption[T],
 ) *QuadTree[T] {
-	rootBounds := spatial.NewRectangle(spatial.Vec[T]{X: 0, Y: 0}, plane.Size())
+	rootBounds := geometry.NewAABB(geometry.Vec[T]{X: 0, Y: 0}, plane.Size())
 	root := newNode(rootBounds, nil)
 	qt := &QuadTree[T]{
 		root:     root,
@@ -62,7 +61,7 @@ func (t *QuadTree[T]) AllItems() []Item[T] {
 	return t.root.allItems()
 }
 
-func (t *QuadTree[T]) LeafRectangles() []spatial.Rectangle[T] {
+func (t *QuadTree[T]) LeafRectangles() []geometry.AABB[T] {
 	return t.root.leafRectangles()
 }
 
@@ -92,7 +91,7 @@ func (t *QuadTree[T]) FindNeighbors(target Item[T], margin T) []Item[T] {
 
 // ---------------------- helpers ----------------------
 
-func scan[T spatial.SupportedNumeric](
+func scan[T geometry.SupportedNumeric](
 	neighborNodes []*Node[T],
 	predicate func(Item[T]) bool,
 ) []Item[T] {
@@ -108,9 +107,9 @@ func scan[T spatial.SupportedNumeric](
 }
 
 // TODO: to wyglada na duplikat SortRectanglesBy z rectangle.go
-func sortNeighbors[T spatial.SupportedNumeric](items []Item[T]) {
+func sortNeighbors[T geometry.SupportedNumeric](items []Item[T]) {
 	sort.Slice(items, func(i, j int) bool {
-		ai, aj := items[i].Value().Bounds(), items[j].Value().Bounds()
+		ai, aj := items[i].Value(), items[j].Value()
 		if ai.TopLeft.Y != aj.TopLeft.Y {
 			return ai.TopLeft.Y < aj.TopLeft.Y
 		}
