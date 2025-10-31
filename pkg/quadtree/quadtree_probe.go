@@ -13,37 +13,17 @@ func (t *QuadTree[T]) probe(aabb geometry.AABB[T], margin T) []geometry.AABB[T] 
 	return rectangles
 }
 
-func (t *QuadTree[T]) wrapAABBCyclic(
-	r geometry.AABB[T],
-) []geometry.AABB[T] {
-	var wrappedRectangles []geometry.AABB[T]
-	var size = t.plane.Size()
-	var contains = t.plane.Contains
-
-	// Predefined offset values for wrapping
-	offsets := []geometry.Vec[T]{
-		{X: size.X, Y: 0},      // Shift right
-		{X: 0, Y: size.Y},      // Shift down
-		{X: size.X, Y: size.Y}, // Shift right-down
-	}
-
-	vecMath := geometry.VectorMathByType[T]()
-
-	// Generate wrapped versions for each offset
-	for _, offset := range offsets {
-		wrapped := geometry.AABB[T]{
-			TopLeft:     r.TopLeft,
-			BottomRight: r.BottomRight,
-			Center:      r.Center,
-		}
-		vecMath.Wrap(&wrapped.TopLeft, offset)
-		vecMath.Wrap(&wrapped.BottomRight, offset)
-		vecMath.Wrap(&wrapped.Center, offset)
-
-		if contains(wrapped.TopLeft) || contains(wrapped.BottomRight) {
-			wrappedRectangles = append(wrappedRectangles, wrapped)
-		}
-	}
-
-	return wrappedRectangles
+func (t *QuadTree[T]) wrapAABBCyclic(probe geometry.AABB[T]) []geometry.AABB[T] {
+	return geometry.GenerateBoundaryFragments(
+		probe.TopLeft,
+		t.plane.Size(),
+		t.plane.VectorMath(),
+		func(offset geometry.Vec[T]) (geometry.AABB[T], geometry.AABB[T], bool) {
+			wrapped := geometry.AABB[T]{
+				TopLeft:     probe.TopLeft.Add(offset),
+				BottomRight: probe.BottomRight.Add(offset),
+				Center:      probe.Center.Add(offset),
+			}
+			return wrapped, wrapped, true
+		})
 }
