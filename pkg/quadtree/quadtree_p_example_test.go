@@ -10,7 +10,7 @@ type ShapeItem[T geometry.SupportedNumeric] struct {
 	shape geometry.Shape[T]
 }
 
-func (si *ShapeItem[T]) Value() geometry.AABB[T] {
+func (si *ShapeItem[T]) AABB() geometry.AABB[T] {
 	return si.shape.Bounds()
 }
 

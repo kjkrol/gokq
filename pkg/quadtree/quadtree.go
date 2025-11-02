@@ -1,22 +1,23 @@
 package quadtree
 
 import (
-	"sort"
-
 	"github.com/kjkrol/gokg/pkg/geometry"
 )
 
-const CAPACITY int = 4
+const (
+	CAPACITY  int = 4
+	MAX_DEPTH int = 10
+)
 
 type Item[T geometry.SupportedNumeric] interface {
-	Value() geometry.AABB[T]
+	AABB() geometry.AABB[T]
 }
 
 type QuadTree[T geometry.SupportedNumeric] struct {
 	root     *Node[T]
-	plane    geometry.Plane[T]
-	distance geometry.Distance[T]
-	maxDepth int
+	appender QuadTreeAppender[T]
+	remover  QuadTreeRemover[T]
+	finder   QuadTreeFinder[T]
 }
 
 func NewQuadTree[T geometry.SupportedNumeric](
@@ -27,9 +28,9 @@ func NewQuadTree[T geometry.SupportedNumeric](
 	root := newNode(rootBounds, nil)
 	qt := &QuadTree[T]{
 		root:     root,
-		plane:    plane,
-		distance: geometry.BoundingBoxDistanceForPlane(plane),
-		maxDepth: 10,
+		appender: QuadTreeAppender[T]{maxDepth: MAX_DEPTH},
+		remover:  QuadTreeRemover[T]{capacity: CAPACITY},
+		finder:   NewQuadTreeFinder(plane),
 	}
 	for _, opt := range opts {
 		opt(qt)
@@ -37,12 +38,12 @@ func NewQuadTree[T geometry.SupportedNumeric](
 	return qt
 }
 
-func (t *QuadTree[T]) Add(item Item[T]) {
-	t.root.add(item)
+func (t *QuadTree[T]) Add(item Item[T]) bool {
+	return t.appender.add(t.root, item, 0)
 }
 
 func (t *QuadTree[T]) Remove(item Item[T]) bool {
-	return t.root.remove(item)
+	return t.remover.remove(t.root, item)
 }
 
 func (t *QuadTree[T]) Close() {
@@ -66,59 +67,5 @@ func (t *QuadTree[T]) LeafRectangles() []geometry.AABB[T] {
 }
 
 func (t *QuadTree[T]) FindNeighbors(target Item[T], margin T) []Item[T] {
-	probes := t.probe(target.Value(), margin)
-
-	neighborSet := make(map[*Node[T]]struct{})
-	for _, p := range probes {
-		t.root.findIntersectingNodesUnique(p, neighborSet)
-	}
-	neighborNodes := make([]*Node[T], 0, len(neighborSet))
-	for n := range neighborSet {
-		neighborNodes = append(neighborNodes, n)
-	}
-
-	targetValue := target.Value()
-	neighbors := scan(neighborNodes, func(it Item[T]) bool {
-		if it == target {
-			return false
-		}
-		return t.distance(targetValue, it.Value()) <= margin
-	})
-
-	sortNeighbors(neighbors)
-	return neighbors
-}
-
-// ---------------------- helpers ----------------------
-
-func scan[T geometry.SupportedNumeric](
-	neighborNodes []*Node[T],
-	predicate func(Item[T]) bool,
-) []Item[T] {
-	neighborItems := make([]Item[T], 0)
-	for _, node := range neighborNodes {
-		for _, neighborItem := range node.items {
-			if predicate(neighborItem) {
-				neighborItems = append(neighborItems, neighborItem)
-			}
-		}
-	}
-	return neighborItems
-}
-
-// TODO: to wyglada na duplikat SortRectanglesBy z rectangle.go
-func sortNeighbors[T geometry.SupportedNumeric](items []Item[T]) {
-	sort.Slice(items, func(i, j int) bool {
-		ai, aj := items[i].Value(), items[j].Value()
-		if ai.TopLeft.Y != aj.TopLeft.Y {
-			return ai.TopLeft.Y < aj.TopLeft.Y
-		}
-		if ai.TopLeft.X != aj.TopLeft.X {
-			return ai.TopLeft.X < aj.TopLeft.X
-		}
-		if ai.BottomRight.Y != aj.BottomRight.Y {
-			return ai.BottomRight.Y < aj.BottomRight.Y
-		}
-		return ai.BottomRight.X < aj.BottomRight.X
-	})
+	return t.finder.FindNeighbors(t.root, target, margin)
 }

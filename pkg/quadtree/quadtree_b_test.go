@@ -11,7 +11,7 @@ type AABBItem[T geometry.SupportedNumeric] struct {
 	aabb geometry.AABB[T]
 }
 
-func (i *AABBItem[T]) Value() geometry.AABB[T] {
+func (i *AABBItem[T]) AABB() geometry.AABB[T] {
 	return i.aabb
 }
 
@@ -99,18 +99,34 @@ func TestQuadTreeBox_ForCyclicBoundedPlane_WithWraps(t *testing.T) {
 	defer qtree.Close()
 
 	target := newRectItem(0, 0, 1, 1)
-	item1 := newRectItem(0, 3, 1, 4) // wrap od góry
-	item2 := newRectItem(3, 0, 4, 1) // wrap od lewej
-	item3 := newRectItem(1, 0, 2, 1) // normalny sąsiad
-	item4 := newRectItem(0, 1, 1, 2) // normalny sąsiad
+	item1 := newRectItem(0, 3, 1, 1) // wrap od góry
+	cyclicPlane.Translate(item1.shape, geometry.NewVec(0, 4))
+	item1Frags := make([]*ShapeItem[int], len(item1.shape.Fragments()))
+	for i, frag := range item1.shape.Fragments() {
+		item1Frags[i] = &ShapeItem[int]{shape: frag}
+		t.Log(item1Frags[i].shape.String())
+		qtree.Add(item1Frags[i])
+	}
 
+	item2 := newRectItem(0, 0, 4, 1) // wrap od lewej
+	cyclicPlane.Translate(item2.shape, geometry.NewVec(4, 0))
+	item2Frags := make([]*ShapeItem[int], len(item2.shape.Fragments()))
 	qtree.Add(item1)
+	for i, frag := range item1.shape.Fragments() {
+		item2Frags[i] = &ShapeItem[int]{shape: frag}
+		t.Log(item2Frags[i].shape.String())
+		qtree.Add(item2Frags[i])
+	}
 	qtree.Add(item2)
+
+	item3 := newRectItem(1, 0, 2, 1) // normalny sąsiad
 	qtree.Add(item3)
+
+	item4 := newRectItem(0, 1, 1, 2) // normalny sąsiad
 	qtree.Add(item4)
 
 	// Przy margin=2 znajdziemy także boxy wrapowane
-	expected := []Item[int]{item1, item2, item3, item4}
+	expected := []Item[int]{item1Frags[0], item2Frags[0], item3, item4}
 	neighbors := qtree.FindNeighbors(target, 2)
 
 	if !sliceutils.SameElements(neighbors, expected) {
@@ -266,7 +282,7 @@ func TestQuadTree_Box_CountDepthAllItemsLeafRectangles(t *testing.T) {
 
 	large1 := newRectItem(0., 0, 16, 8) // górna połowa
 
-	large2 := newRectItem(0., 8, 16, 16) // dolna połowa
+	large2 := newRectItem(0., 8, 16, 8) // dolna połowa
 
 	qtree.Add(large1)
 	qtree.Add(large2)
@@ -281,10 +297,10 @@ func TestQuadTree_Box_CountDepthAllItemsLeafRectangles(t *testing.T) {
 
 	// dodajemy małe boxy, które zmieszczą się w childach
 	smallBoxes := []*ShapeItem[float64]{
-		newRectItem(1., 1, 2, 2),
-		newRectItem(3., 3, 4, 4),
-		newRectItem(14., 14, 15, 15),
-		newRectItem(12., 1, 13, 2),
+		newRectItem(1., 1, 1, 1),
+		newRectItem(3., 3, 1, 1),
+		newRectItem(14., 14, 1, 1),
+		newRectItem(12., 1, 1, 1),
 	}
 	for _, sb := range smallBoxes {
 		qtree.Add(sb)

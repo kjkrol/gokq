@@ -42,7 +42,7 @@ func ExampleQuadTree() {
 
 	// Wypisujemy sąsiadów (ich granice)
 	for _, neighbor := range neighbors {
-		fmt.Println(neighbor.Value())
+		fmt.Println(neighbor.AABB())
 	}
 
 	// Output:
@@ -89,7 +89,7 @@ func ExampleQuadTree_largeBoxes() {
 	neighbors := qtree.FindNeighbors(target, 1.5)
 
 	for _, neighbor := range neighbors {
-		fmt.Println(neighbor.Value())
+		fmt.Println(neighbor.AABB())
 	}
 
 	// Output:

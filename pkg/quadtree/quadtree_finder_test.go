@@ -11,7 +11,7 @@ func TestQuadTree_ProbeLine(t *testing.T) {
 	qtree := NewQuadTree(boundedPlane)
 	line := geometry.NewLine(geometry.Vec[int]{X: 1, Y: 1}, geometry.Vec[int]{X: 4, Y: 3})
 
-	probes := qtree.probe(line.Bounds(), 1)
+	probes := qtree.finder.probe(line.Bounds(), 1)
 	if len(probes) != 1 {
 		t.Fatalf("expected a single probe rectangle, got %d", len(probes))
 	}
@@ -30,7 +30,7 @@ func TestQuadTree_ProbePolygon(t *testing.T) {
 	boundedPlane := geometry.NewBoundedPlane(100, 100)
 	qtree := NewQuadTree(boundedPlane)
 
-	probes := qtree.probe(poly.Bounds(), 1)
+	probes := qtree.finder.probe(poly.Bounds(), 1)
 	if len(probes) != 1 {
 		t.Fatalf("expected single probe rectangle, got %d", len(probes))
 	}
@@ -49,7 +49,7 @@ func TestQuadTree_ForCyclicBoundedPlane_ProbeAABB(t *testing.T) {
 	aabb := geometry.NewAABB(geometry.Vec[int]{X: 8, Y: 8}, geometry.Vec[int]{X: 10, Y: 10})
 	boundedPlane := geometry.NewCyclicBoundedPlane(10, 10)
 	qtree := NewQuadTree(boundedPlane)
-	probes := qtree.probe(aabb, 0)
+	probes := qtree.finder.probe(aabb, 0)
 	if len(probes) < 2 {
 		t.Fatalf("expected wrapped probes, got %d", len(probes))
 	}
@@ -74,10 +74,9 @@ func TestRectangle_IntersectsCyclic(t *testing.T) {
 	}
 	size := geometry.Vec[int]{X: 100, Y: 100}
 	boundedPlane := geometry.NewBoundedPlane(size.X, size.Y)
-	qtree := NewQuadTree(boundedPlane)
 
 	for _, intersection := range intersects {
-		wrapped := qtree.createAABBFragmentsIfNeeded(intersection.rect2)
+		wrapped := createAABBFragmentsIfNeeded(boundedPlane, intersection.rect2)
 		if !intersection.rect1.IntersectsAny(wrapped) {
 			t.Errorf("rect1 %v should intersect with rect2 %v", intersection.rect1, intersection.rect2)
 		}
