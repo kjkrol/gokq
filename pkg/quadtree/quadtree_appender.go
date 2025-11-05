@@ -8,12 +8,12 @@ type QuadTreeAppender[T geometry.SupportedNumeric] struct {
 
 func (qa QuadTreeAppender[T]) add(node *Node[T], item Item[T], depth int) bool {
 
-	if !node.bounds.Contains(item.AABB()) {
+	if !node.bounds.Contains(item.Bound()) {
 		return false
 	}
 
 	if node.isNode() && depth < qa.maxDepth {
-		if child := node.findFittingChild(item.AABB()); child != nil {
+		if child := node.findFittingChild(item.Bound()); child != nil {
 			if qa.add(child, item, depth+1) {
 				return true
 			}
@@ -34,7 +34,7 @@ func (qa QuadTreeAppender[T]) redistributeItems(node *Node[T], depth int) {
 	moved := 0
 
 	for _, item := range node.items {
-		if child := node.findFittingChild(item.AABB()); child != nil && qa.add(child, item, depth+1) {
+		if child := node.findFittingChild(item.Bound()); child != nil && qa.add(child, item, depth+1) {
 			moved++
 		} else {
 			remaining = append(remaining, item)

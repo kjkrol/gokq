@@ -19,12 +19,12 @@ func NewQuadTreeFinder[T geometry.SupportedNumeric](plane geometry.Plane[T]) Qua
 }
 
 func (qf QuadTreeFinder[T]) FindNeighbors(root *Node[T], target Item[T], margin T) []Item[T] {
-	targetBounds := target.AABB()
+	targetBounds := target.Bound()
 	predicate := func(it Item[T]) bool {
 		if it == target {
 			return false
 		}
-		return qf.distance(targetBounds, it.AABB()) <= margin
+		return qf.distance(targetBounds, it.Bound()) <= margin
 	}
 
 	probes := qf.probe(targetBounds, margin)
@@ -36,29 +36,15 @@ func (qf QuadTreeFinder[T]) FindNeighbors(root *Node[T], target Item[T], margin 
 }
 
 func (qf QuadTreeFinder[T]) probe(aabb geometry.AABB[T], margin T) []geometry.AABB[T] {
-	probe := aabb.Expand(margin)
+	probe := aabb
+	qf.plane.Expand(&probe, margin)
 	rectangles := []geometry.AABB[T]{probe}
 	if qf.plane.Name() == geometry.CYCLIC {
-		rectangles = append(rectangles, createAABBFragmentsIfNeeded(qf.plane, probe)...)
+		for _, frag := range probe.Fragments() {
+			rectangles = append(rectangles, frag)
+		}
 	}
 	return rectangles
-}
-
-func createAABBFragmentsIfNeeded[T geometry.SupportedNumeric](
-	plane geometry.Plane[T],
-	probe geometry.AABB[T],
-) []geometry.AABB[T] {
-	return geometry.GenerateBoundaryFragments(
-		probe.TopLeft,
-		plane,
-		func(offset geometry.Vec[T]) (geometry.AABB[T], geometry.AABB[T], bool) {
-			wrapped := geometry.AABB[T]{
-				TopLeft:     probe.TopLeft.Add(offset),
-				BottomRight: probe.BottomRight.Add(offset),
-				Center:      probe.Center.Add(offset),
-			}
-			return wrapped, wrapped, true
-		})
 }
 
 func singleProbeFind[T geometry.SupportedNumeric](
@@ -136,7 +122,7 @@ func forEachIntersectingItem[T geometry.SupportedNumeric](
 
 func sortNeighbors[T geometry.SupportedNumeric](items []Item[T]) {
 	sort.Slice(items, func(i, j int) bool {
-		ai, aj := items[i].AABB(), items[j].AABB()
+		ai, aj := items[i].Bound(), items[j].Bound()
 		first, _ := geometry.SortRectanglesBy(
 			ai, aj,
 			func(box geometry.AABB[T]) T { return box.TopLeft.Y },
@@ -144,6 +130,6 @@ func sortNeighbors[T geometry.SupportedNumeric](items []Item[T]) {
 			func(box geometry.AABB[T]) T { return box.BottomRight.Y },
 			func(box geometry.AABB[T]) T { return box.BottomRight.X },
 		)
-		return first == ai
+		return first.Equals(ai)
 	})
 }

@@ -7,15 +7,11 @@ import (
 )
 
 type ShapeItem[T geometry.SupportedNumeric] struct {
-	shape geometry.Shape[T]
+	geometry.AABB[T]
 }
 
-func (si *ShapeItem[T]) AABB() geometry.AABB[T] {
-	return si.shape.Bounds()
-}
-
-func (si *ShapeItem[T]) String() string {
-	return si.shape.String()
+func (si *ShapeItem[T]) Bound() geometry.AABB[T] {
+	return si.AABB
 }
 
 func ExampleQuadTree_FindNeighbors_targetInTree() {
@@ -26,11 +22,11 @@ func ExampleQuadTree_FindNeighbors_targetInTree() {
 
 	// Add items to the quadtree
 	items := []*ShapeItem[int]{
-		{shape: &geometry.Vec[int]{X: 32, Y: 32}},
-		{shape: &geometry.Vec[int]{X: 32, Y: 31}},
-		{shape: &geometry.Vec[int]{X: 32, Y: 33}},
-		{shape: &geometry.Vec[int]{X: 31, Y: 32}},
-		{shape: &geometry.Vec[int]{X: 33, Y: 32}},
+		{geometry.Vec[int]{X: 32, Y: 32}.Bounds()},
+		{geometry.Vec[int]{X: 32, Y: 31}.Bounds()},
+		{geometry.Vec[int]{X: 32, Y: 33}.Bounds()},
+		{geometry.Vec[int]{X: 31, Y: 32}.Bounds()},
+		{geometry.Vec[int]{X: 33, Y: 32}.Bounds()},
 	}
 	for _, item := range items {
 		qtree.Add(item)
@@ -46,10 +42,10 @@ func ExampleQuadTree_FindNeighbors_targetInTree() {
 	}
 
 	// Output:
-	// (32,31)
-	// (31,32)
-	// (33,32)
-	// (32,33)
+	// {(32,31) (32,31)}
+	// {(31,32) (31,32)}
+	// {(33,32) (33,32)}
+	// {(32,33) (32,33)}
 }
 
 func ExampleQuadTree_FindNeighbors_targetNotInTree() {
@@ -60,18 +56,18 @@ func ExampleQuadTree_FindNeighbors_targetNotInTree() {
 
 	// Add items to the quadtree
 	items := []*ShapeItem[int]{
-		{shape: &geometry.Vec[int]{X: 32, Y: 32}},
-		{shape: &geometry.Vec[int]{X: 32, Y: 31}},
-		{shape: &geometry.Vec[int]{X: 32, Y: 33}},
-		{shape: &geometry.Vec[int]{X: 31, Y: 32}},
-		{shape: &geometry.Vec[int]{X: 33, Y: 32}},
+		{geometry.Vec[int]{X: 32, Y: 32}.Bounds()},
+		{geometry.Vec[int]{X: 32, Y: 31}.Bounds()},
+		{geometry.Vec[int]{X: 32, Y: 33}.Bounds()},
+		{geometry.Vec[int]{X: 31, Y: 32}.Bounds()},
+		{geometry.Vec[int]{X: 33, Y: 32}.Bounds()},
 	}
 	for _, item := range items {
 		qtree.Add(item)
 	}
 
 	// Find neighbors of a target item
-	target := &ShapeItem[int]{shape: &geometry.Vec[int]{X: 32, Y: 32}}
+	target := &ShapeItem[int]{geometry.Vec[int]{X: 32, Y: 32}.Bounds()}
 	neighbors := qtree.FindNeighbors(target, 1)
 
 	// Print the neighbors
@@ -80,9 +76,9 @@ func ExampleQuadTree_FindNeighbors_targetNotInTree() {
 	}
 
 	// Output:
-	// (32,31)
-	// (31,32)
-	// (32,32)
-	// (33,32)
-	// (32,33)
+	// {(32,31) (32,31)}
+	// {(31,32) (31,32)}
+	// {(32,32) (32,32)}
+	// {(33,32) (33,32)}
+	// {(32,33) (32,33)}
 }

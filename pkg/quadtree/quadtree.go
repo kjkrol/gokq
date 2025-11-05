@@ -9,10 +9,12 @@ const (
 	MAX_DEPTH int = 10
 )
 
+// Item represents an object with an axis-aligned bounding box.
 type Item[T geometry.SupportedNumeric] interface {
-	AABB() geometry.AABB[T]
+	Bound() geometry.AABB[T]
 }
 
+// QuadTree stores spatial items in a hierarchical grid for fast range queries.
 type QuadTree[T geometry.SupportedNumeric] struct {
 	root     *Node[T]
 	appender QuadTreeAppender[T]
@@ -20,11 +22,12 @@ type QuadTree[T geometry.SupportedNumeric] struct {
 	finder   QuadTreeFinder[T]
 }
 
+// NewQuadTree builds a QuadTree covering the supplied plane viewport.
 func NewQuadTree[T geometry.SupportedNumeric](
 	plane geometry.Plane[T],
 	opts ...QuadTreeOption[T],
 ) *QuadTree[T] {
-	rootBounds := geometry.NewAABB(geometry.Vec[T]{X: 0, Y: 0}, plane.Size())
+	rootBounds := plane.Viewport()
 	root := newNode(rootBounds, nil)
 	qt := &QuadTree[T]{
 		root:     root,
@@ -38,34 +41,42 @@ func NewQuadTree[T geometry.SupportedNumeric](
 	return qt
 }
 
+// Add inserts item into the tree; returns false if it cannot be placed.
 func (t *QuadTree[T]) Add(item Item[T]) bool {
 	return t.appender.add(t.root, item, 0)
 }
 
+// Remove deletes item from the tree; returns false when nothing was removed.
 func (t *QuadTree[T]) Remove(item Item[T]) bool {
 	return t.remover.remove(t.root, item)
 }
 
+// Close releases internal resources held by the tree.
 func (t *QuadTree[T]) Close() {
 	t.root.close()
 }
 
+// Count returns the number of items stored in the tree.
 func (t *QuadTree[T]) Count() int {
 	return len(t.root.allItems())
 }
 
+// Depth reports the maximum depth for active nodes.
 func (t *QuadTree[T]) Depth() int {
 	return t.root.depth()
 }
 
+// AllItems returns a snapshot of every stored item.
 func (t *QuadTree[T]) AllItems() []Item[T] {
 	return t.root.allItems()
 }
 
-func (t *QuadTree[T]) LeafRectangles() []geometry.AABB[T] {
+// LeafBounds returns the bounding boxes of all current leaf nodes.
+func (t *QuadTree[T]) LeafBounds() []geometry.AABB[T] {
 	return t.root.leafRectangles()
 }
 
+// FindNeighbors retrieves items within margin of the target's bounds.
 func (t *QuadTree[T]) FindNeighbors(target Item[T], margin T) []Item[T] {
 	return t.finder.FindNeighbors(t.root, target, margin)
 }

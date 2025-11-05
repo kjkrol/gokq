@@ -8,7 +8,7 @@ type QuadTreeRemover[T geometry.SupportedNumeric] struct {
 
 func (qr QuadTreeRemover[T]) remove(node *Node[T], item Item[T]) bool {
 	if node.isNode() {
-		if child := node.findFittingChild(item.AABB()); child != nil {
+		if child := node.findFittingChild(item.Bound()); child != nil {
 			if qr.remove(child, item) {
 				qr.tryCompress(node)
 				return true
