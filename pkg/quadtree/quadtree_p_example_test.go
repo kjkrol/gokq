@@ -2,31 +2,61 @@ package quadtree
 
 import (
 	"fmt"
+	"sync/atomic"
 
 	"github.com/kjkrol/gokg/pkg/geometry"
 )
 
-type ShapeItem[T geometry.SupportedNumeric] struct {
-	geometry.AABB[T]
+var globalID uint64
+
+type TestItem[T geometry.SupportedNumeric] struct {
+	geometry.BoundingBox[T]
+	id uint64
 }
 
-func (si *ShapeItem[T]) Bound() geometry.AABB[T] {
-	return si.AABB
+func (t *TestItem[T]) Bound() geometry.BoundingBox[T] {
+	return t.BoundingBox
+}
+
+func (t TestItem[T]) Id() uint64 { return t.id }
+
+func newTestItemPointAtPos[T geometry.SupportedNumeric](x, y T) *TestItem[T] {
+	vec := geometry.NewVec(x, y)
+	box := geometry.NewBoundingBoxAround(vec, 0)
+	id := atomic.AddUint64(&globalID, 1)
+	return &TestItem[T]{BoundingBox: box, id: id}
+}
+
+func newTestItemFromPos[T geometry.SupportedNumeric](x1, y1, x2, y2 T) *TestItem[T] {
+	box := geometry.NewBoundingBoxAt(geometry.NewVec(x1, y1), x2, y2)
+	id := atomic.AddUint64(&globalID, 1)
+	return &TestItem[T]{BoundingBox: box, id: id}
+}
+
+func newTestItemFromVec[T geometry.SupportedNumeric](vec geometry.Vec[T]) *TestItem[T] {
+	box := geometry.NewBoundingBoxAround(vec, 0)
+	id := atomic.AddUint64(&globalID, 1)
+	return &TestItem[T]{BoundingBox: box, id: id}
+}
+
+func newTestItemFromBox[T geometry.SupportedNumeric](box geometry.BoundingBox[T]) *TestItem[T] {
+	id := atomic.AddUint64(&globalID, 1)
+	return &TestItem[T]{BoundingBox: box, id: id}
 }
 
 func ExampleQuadTree_FindNeighbors_targetInTree() {
 	// Create a bounded plane and a quadtree
 	boundedPlane := geometry.NewBoundedPlane(64, 64)
-	qtree := NewQuadTree(boundedPlane)
+	qtree := NewQuadTree[int, uint64](boundedPlane)
 	defer qtree.Close()
 
 	// Add items to the quadtree
-	items := []*ShapeItem[int]{
-		{geometry.Vec[int]{X: 32, Y: 32}.Bounds()},
-		{geometry.Vec[int]{X: 32, Y: 31}.Bounds()},
-		{geometry.Vec[int]{X: 32, Y: 33}.Bounds()},
-		{geometry.Vec[int]{X: 31, Y: 32}.Bounds()},
-		{geometry.Vec[int]{X: 33, Y: 32}.Bounds()},
+	items := []*TestItem[int]{
+		newTestItemPointAtPos(32, 32),
+		newTestItemPointAtPos(32, 31),
+		newTestItemPointAtPos(32, 33),
+		newTestItemPointAtPos(31, 32),
+		newTestItemPointAtPos(33, 32),
 	}
 	for _, item := range items {
 		qtree.Add(item)
@@ -51,23 +81,23 @@ func ExampleQuadTree_FindNeighbors_targetInTree() {
 func ExampleQuadTree_FindNeighbors_targetNotInTree() {
 	// Create a bounded plane and a quadtree
 	boundedPlane := geometry.NewBoundedPlane(64, 64)
-	qtree := NewQuadTree(boundedPlane)
+	qtree := NewQuadTree[int, uint64](boundedPlane)
 	defer qtree.Close()
 
 	// Add items to the quadtree
-	items := []*ShapeItem[int]{
-		{geometry.Vec[int]{X: 32, Y: 32}.Bounds()},
-		{geometry.Vec[int]{X: 32, Y: 31}.Bounds()},
-		{geometry.Vec[int]{X: 32, Y: 33}.Bounds()},
-		{geometry.Vec[int]{X: 31, Y: 32}.Bounds()},
-		{geometry.Vec[int]{X: 33, Y: 32}.Bounds()},
+	items := []*TestItem[int]{
+		newTestItemPointAtPos(32, 32),
+		newTestItemPointAtPos(32, 31),
+		newTestItemPointAtPos(32, 33),
+		newTestItemPointAtPos(31, 32),
+		newTestItemPointAtPos(33, 32),
 	}
 	for _, item := range items {
 		qtree.Add(item)
 	}
 
 	// Find neighbors of a target item
-	target := &ShapeItem[int]{geometry.Vec[int]{X: 32, Y: 32}.Bounds()}
+	target := newTestItemPointAtPos(32, 32)
 	neighbors := qtree.FindNeighbors(target, 1)
 
 	// Print the neighbors

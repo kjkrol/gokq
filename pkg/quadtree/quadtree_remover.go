@@ -2,11 +2,11 @@ package quadtree
 
 import "github.com/kjkrol/gokg/pkg/geometry"
 
-type QuadTreeRemover[T geometry.SupportedNumeric] struct {
+type QuadTreeRemover[T geometry.SupportedNumeric, K comparable] struct {
 	capacity int
 }
 
-func (qr QuadTreeRemover[T]) remove(node *Node[T], item Item[T]) bool {
+func (qr QuadTreeRemover[T, K]) remove(node *Node[T, K], item Item[T, K]) bool {
 	if node.isNode() {
 		if child := node.findFittingChild(item.Bound()); child != nil {
 			if qr.remove(child, item) {
@@ -27,7 +27,7 @@ func (qr QuadTreeRemover[T]) remove(node *Node[T], item Item[T]) bool {
 	return false
 }
 
-func (qr QuadTreeRemover[T]) tryCompress(node *Node[T]) {
+func (qr QuadTreeRemover[T, K]) tryCompress(node *Node[T, K]) {
 	if !node.isNode() {
 		return
 	}
@@ -39,8 +39,8 @@ func (qr QuadTreeRemover[T]) tryCompress(node *Node[T]) {
 	}
 }
 
-func (qr QuadTreeRemover[T]) collectItems(n *Node[T]) []Item[T] {
-	items := append([]Item[T]{}, n.items...)
+func (qr QuadTreeRemover[T, K]) collectItems(n *Node[T, K]) []Item[T, K] {
+	items := append([]Item[T, K]{}, n.items...)
 	for _, ch := range n.childs {
 		items = append(items, qr.collectItems(ch)...)
 	}

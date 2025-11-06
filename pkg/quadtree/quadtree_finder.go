@@ -6,27 +6,26 @@ import (
 	"github.com/kjkrol/gokg/pkg/geometry"
 )
 
-type QuadTreeFinder[T geometry.SupportedNumeric] struct {
+type QuadTreeFinder[T geometry.SupportedNumeric, K comparable] struct {
 	plane    geometry.Plane[T]
 	distance geometry.Distance[T]
 }
 
-func NewQuadTreeFinder[T geometry.SupportedNumeric](plane geometry.Plane[T]) QuadTreeFinder[T] {
-	return QuadTreeFinder[T]{
+func NewQuadTreeFinder[T geometry.SupportedNumeric, K comparable](plane geometry.Plane[T]) QuadTreeFinder[T, K] {
+	return QuadTreeFinder[T, K]{
 		plane:    plane,
 		distance: geometry.BoundingBoxDistanceForPlane(plane),
 	}
 }
 
-func (qf QuadTreeFinder[T]) FindNeighbors(root *Node[T], target Item[T], margin T) []Item[T] {
+func (qf QuadTreeFinder[T, K]) FindNeighbors(root *Node[T, K], target Item[T, K], margin T) []Item[T, K] {
 	targetBounds := target.Bound()
-	predicate := func(it Item[T]) bool {
-		if it == target {
+	predicate := func(it Item[T, K]) bool {
+		if it.Id() == target.Id() {
 			return false
 		}
 		return qf.distance(targetBounds, it.Bound()) <= margin
 	}
-
 	probes := qf.probe(targetBounds, margin)
 	if len(probes) == 1 {
 		return singleProbeFind(root, probes[0], predicate)
@@ -35,44 +34,42 @@ func (qf QuadTreeFinder[T]) FindNeighbors(root *Node[T], target Item[T], margin 
 	}
 }
 
-func (qf QuadTreeFinder[T]) probe(aabb geometry.AABB[T], margin T) []geometry.AABB[T] {
-	probe := aabb
+func (qf QuadTreeFinder[T, K]) probe(aabb geometry.BoundingBox[T], margin T) []geometry.BoundingBox[T] {
+	probe := geometry.NewPlaneBoxFromBox(aabb)
 	qf.plane.Expand(&probe, margin)
-	rectangles := []geometry.AABB[T]{probe}
-	if qf.plane.Name() == geometry.CYCLIC {
-		for _, frag := range probe.Fragments() {
-			rectangles = append(rectangles, frag)
-		}
+	rectangles := []geometry.BoundingBox[T]{probe.BoundingBox}
+	for _, frag := range probe.Fragments() {
+		rectangles = append(rectangles, frag)
 	}
 	return rectangles
 }
 
-func singleProbeFind[T geometry.SupportedNumeric](
-	root *Node[T],
-	probe geometry.AABB[T],
-	predicate func(it Item[T]) bool,
-) []Item[T] {
-	neighbors := make([]Item[T], 0)
-	forEachIntersectingItem(root, probe, predicate, nil, func(item Item[T]) {
+func singleProbeFind[T geometry.SupportedNumeric, K comparable](
+	root *Node[T, K],
+	probe geometry.BoundingBox[T],
+	predicate func(it Item[T, K]) bool,
+) []Item[T, K] {
+	neighbors := make([]Item[T, K], 0)
+	forEachIntersectingItem(root, probe, predicate, nil, func(item Item[T, K]) {
 		neighbors = append(neighbors, item)
 	})
 	sortNeighbors(neighbors)
 	return neighbors
 }
 
-func multiProbeFind[T geometry.SupportedNumeric](
-	root *Node[T],
-	probes []geometry.AABB[T],
-	predicate func(it Item[T]) bool,
-) []Item[T] {
-	candidateSet := make(map[Item[T]]struct{})
+func multiProbeFind[T geometry.SupportedNumeric, K comparable](
+	root *Node[T, K],
+	probes []geometry.BoundingBox[T],
+	predicate func(it Item[T, K]) bool,
+) []Item[T, K] {
+	candidateSet := make(map[Item[T, K]]struct{})
 	for _, probe := range probes {
-		visited := make(map[*Node[T]]struct{})
-		forEachIntersectingItem(root, probe, predicate, visited, func(item Item[T]) {
+		visited := make(map[*Node[T, K]]struct{})
+		forEachIntersectingItem(root, probe, predicate, visited, func(item Item[T, K]) {
 			candidateSet[item] = struct{}{}
 		})
 	}
-	neighbors := make([]Item[T], 0, len(candidateSet))
+	neighbors := make([]Item[T, K], 0, len(candidateSet))
 	for item := range candidateSet {
 		neighbors = append(neighbors, item)
 	}
@@ -80,18 +77,18 @@ func multiProbeFind[T geometry.SupportedNumeric](
 	return neighbors
 }
 
-func forEachIntersectingItem[T geometry.SupportedNumeric](
-	root *Node[T],
-	probe geometry.AABB[T],
-	predicate func(Item[T]) bool,
-	visited map[*Node[T]]struct{},
-	visit func(Item[T]),
+func forEachIntersectingItem[T geometry.SupportedNumeric, K comparable](
+	root *Node[T, K],
+	probe geometry.BoundingBox[T],
+	predicate func(Item[T, K]) bool,
+	visited map[*Node[T, K]]struct{},
+	visit func(Item[T, K]),
 ) {
 	if root == nil {
 		return
 	}
 
-	stack := []*Node[T]{root}
+	stack := []*Node[T, K]{root}
 	for len(stack) > 0 {
 		node := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
@@ -120,15 +117,15 @@ func forEachIntersectingItem[T geometry.SupportedNumeric](
 	}
 }
 
-func sortNeighbors[T geometry.SupportedNumeric](items []Item[T]) {
+func sortNeighbors[T geometry.SupportedNumeric, K comparable](items []Item[T, K]) {
 	sort.Slice(items, func(i, j int) bool {
 		ai, aj := items[i].Bound(), items[j].Bound()
-		first, _ := geometry.SortRectanglesBy(
+		first, _ := geometry.SortBoxesBy(
 			ai, aj,
-			func(box geometry.AABB[T]) T { return box.TopLeft.Y },
-			func(box geometry.AABB[T]) T { return box.TopLeft.X },
-			func(box geometry.AABB[T]) T { return box.BottomRight.Y },
-			func(box geometry.AABB[T]) T { return box.BottomRight.X },
+			func(box geometry.BoundingBox[T]) T { return box.TopLeft.Y },
+			func(box geometry.BoundingBox[T]) T { return box.TopLeft.X },
+			func(box geometry.BoundingBox[T]) T { return box.BottomRight.Y },
+			func(box geometry.BoundingBox[T]) T { return box.BottomRight.X },
 		)
 		return first.Equals(ai)
 	})

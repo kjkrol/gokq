@@ -23,19 +23,20 @@ import (
 )
 
 type point struct {
-	box geometry.AABB[float64]
+	box geometry.BoundingBox[float64]
 	id  string
 }
 
 func newPoint(id string, x, y float64) *point {
 	pos := geometry.NewVec(x, y)
 	return &point{
-		box: pos.Bounds(),
+		box: geometry.NewBoundingBoxAt(pos, 0, 0),
 		id:  id,
 	}
 }
 
-func (p *point) Bound() geometry.AABB[float64] { return p.box }
+func (p *point) Bound() geometry.BoundingBox[float64] { return p.box }
+func (p *point) Id() string                           { return p.id }
 
 func main() {
 	plane := geometry.NewCyclicBoundedPlane[float64](64, 64)
@@ -52,7 +53,7 @@ func main() {
 
 	target := newPoint("target", 63.5, 63.5)
 	for _, neighbor := range tree.FindNeighbors(target, 2.0) {
-		fmt.Println(neighbor.Bound())
+		fmt.Printf("%s -> %v\n", neighbor.Id(), neighbor.Bound())
 	}
 }
 ```
