@@ -30,8 +30,8 @@ func ExampleQuadTree() {
 	}
 
 	// Wybieramy target
-	aabb := geometry.NewBoundingBoxAt(geometry.NewVec(32, 32), 1, 1)
-	target := newTestItemFromBox(aabb)
+	box := geometry.NewBoundingBoxAt(geometry.NewVec(32, 32), 1, 1)
+	target := newTestItemFromBox(box)
 
 	// Szukamy sąsiadów targeta z marginesem 0 (czyli boxy przecinające się dokładnie z nim)
 	neighbors := qtree.FindNeighbors(target, 0)

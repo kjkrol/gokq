@@ -155,8 +155,8 @@ func TestQuadTree_BoxItems_LargeStayInParent_SmallGoToChildren(t *testing.T) {
 
 	// Dodajemy 6 dużych boxów, każdy obejmuje połowę przestrzeni
 	for range 6 {
-		aabb := geometry.NewBoundingBoxAt(geometry.Vec[float64]{X: 0, Y: 0}, 33, 33) // duży box, nie mieści się w jednym childzie
-		large := newTestItemFromBox(aabb)
+		box := geometry.NewBoundingBoxAt(geometry.Vec[float64]{X: 0, Y: 0}, 33, 33) // duży box, nie mieści się w jednym childzie
+		large := newTestItemFromBox(box)
 		qtree.Add(large)
 	}
 
@@ -169,10 +169,10 @@ func TestQuadTree_BoxItems_LargeStayInParent_SmallGoToChildren(t *testing.T) {
 	}
 
 	// Teraz dodajemy kilka małych boxów, które zmieszczą się w ćwiartkach
-	aabbSmall1 := geometry.NewBoundingBoxAt(geometry.Vec[float64]{X: 1, Y: 1}, 1, 1)
-	small1 := newTestItemFromBox(aabbSmall1)
-	aabbSmall2 := geometry.NewBoundingBoxAt(geometry.Vec[float64]{X: 10, Y: 10}, 1, 1)
-	small2 := newTestItemFromBox(aabbSmall2)
+	boxSmall1 := geometry.NewBoundingBoxAt(geometry.Vec[float64]{X: 1, Y: 1}, 1, 1)
+	small1 := newTestItemFromBox(boxSmall1)
+	boxSmall2 := geometry.NewBoundingBoxAt(geometry.Vec[float64]{X: 10, Y: 10}, 1, 1)
+	small2 := newTestItemFromBox(boxSmall2)
 	qtree.Add(small1)
 	qtree.Add(small2)
 
@@ -271,12 +271,12 @@ func TestSortNeighbors_BottomRightTieBreak(t *testing.T) {
 	defer qtree.Close()
 
 	// Box A i B mają identyczne TopLeft
-	aabb1 := geometry.NewBoundingBoxAt(geometry.NewVec(1.0, 1), 2, 2)
-	a := newTestItemFromBox(aabb1)
-	aabb2 := geometry.NewBoundingBoxAt(geometry.NewVec(1.0, 1), 2, 3) // różni się tylko BottomRight.Y
-	b := newTestItemFromBox(aabb2)
-	aabb3 := geometry.NewBoundingBoxAt(geometry.NewVec(1.0, 1), 3, 2) // różni się tylko BottomRight.X
-	c := newTestItemFromBox(aabb3)
+	box1 := geometry.NewBoundingBoxAt(geometry.NewVec(1.0, 1), 2, 2)
+	a := newTestItemFromBox(box1)
+	box2 := geometry.NewBoundingBoxAt(geometry.NewVec(1.0, 1), 2, 3) // różni się tylko BottomRight.Y
+	b := newTestItemFromBox(box2)
+	box3 := geometry.NewBoundingBoxAt(geometry.NewVec(1.0, 1), 3, 2) // różni się tylko BottomRight.X
+	c := newTestItemFromBox(box3)
 
 	items := []Item[float64, uint64]{b, a, c}
 

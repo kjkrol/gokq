@@ -11,9 +11,9 @@ import (
 func TestQuadTree_Probe_For_BoundedPlane(t *testing.T) {
 	boundedPlane := geometry.NewBoundedPlane(100, 100)
 	qtree := NewQuadTree[int, uint64](boundedPlane)
-	aabb := geometry.NewBoundingBoxAt(geometry.NewVec(0, 0), 2, 2)
+	box := geometry.NewBoundingBoxAt(geometry.NewVec(0, 0), 2, 2)
 
-	probes := qtree.finder.probe(aabb, 1)
+	probes := qtree.finder.probe(box, 1)
 	if len(probes) != 1 {
 		t.Fatalf("expected single probe, got %d", len(probes))
 	}
@@ -31,8 +31,8 @@ func TestQuadTree_Probe_For_BoundedPlane(t *testing.T) {
 func TestQuadTree_Probe_For_CyclicPlane(t *testing.T) {
 	boundedPlane := geometry.NewCyclicBoundedPlane(10, 10)
 	qtree := NewQuadTree[int, uint64](boundedPlane)
-	aabb := geometry.NewBoundingBoxAt(geometry.NewVec(8, 8), 2, 2)
-	probes := qtree.finder.probe(aabb, 0)
+	box := geometry.NewBoundingBoxAt(geometry.NewVec(8, 8), 2, 2)
+	probes := qtree.finder.probe(box, 0)
 	if len(probes) > 1 {
 		t.Fatalf("expected single probe, got %d", len(probes))
 	}
@@ -50,8 +50,8 @@ func TestQuadTree_Probe_For_CyclicPlane(t *testing.T) {
 func TestQuadTree_Probe_For_CyclicPlane_Edge_Case(t *testing.T) {
 	boundedPlane := geometry.NewCyclicBoundedPlane(10, 10)
 	qtree := NewQuadTree[int, uint64](boundedPlane)
-	aabb := geometry.NewBoundingBoxAt(geometry.NewVec(0, 0), 2, 2)
-	probes := qtree.finder.probe(aabb, 2)
+	box := geometry.NewBoundingBoxAt(geometry.NewVec(0, 0), 2, 2)
+	probes := qtree.finder.probe(box, 2)
 	if len(probes) != 4 {
 		t.Fatalf("expected 4 probes, got %d", len(probes))
 	}
