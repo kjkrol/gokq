@@ -14,7 +14,7 @@ type QuadTreeFinder[T geometry.SupportedNumeric, K comparable] struct {
 func NewQuadTreeFinder[T geometry.SupportedNumeric, K comparable](plane geometry.Plane[T]) QuadTreeFinder[T, K] {
 	return QuadTreeFinder[T, K]{
 		plane:    plane,
-		distance: geometry.BoundingBoxDistanceForPlane(plane),
+		distance: geometry.BoundingBoxDistance(plane),
 	}
 }
 
@@ -35,7 +35,7 @@ func (qf QuadTreeFinder[T, K]) FindNeighbors(root *Node[T, K], target Item[T, K]
 }
 
 func (qf QuadTreeFinder[T, K]) probe(box geometry.BoundingBox[T], margin T) []geometry.BoundingBox[T] {
-	probe := geometry.NewPlaneBoxFromBox(box)
+	probe := qf.plane.WrapBoundingBox(box)
 	qf.plane.Expand(&probe, margin)
 	rectangles := []geometry.BoundingBox[T]{probe.BoundingBox}
 	for _, frag := range probe.Fragments() {

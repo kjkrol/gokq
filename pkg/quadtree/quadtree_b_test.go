@@ -259,7 +259,7 @@ func TestQuadTree_Box_CountDepthAllItemsLeafRectangles(t *testing.T) {
 	}
 	// wszystkie leaf boxy muszą być w obrębie płaszczyzny
 	for _, lb := range leafs {
-		if !plane.Contains(lb.TopLeft) && !plane.Contains(lb.BottomRight) {
+		if !plane.Viewport().Contains(lb) {
 			t.Errorf("leaf box %+v is outside plane", lb)
 		}
 	}

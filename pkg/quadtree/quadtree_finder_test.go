@@ -89,7 +89,7 @@ func TestQuadTree_FindNeighbors_ForCyclicBoundedPlane_WithFrags(t *testing.T) {
 
 	target := newTestItemFromPos(0, 0, 1, 1)
 
-	planeBox1 := geometry.NewPlaneBox(geometry.NewVec(0, 0), 2, 2)
+	planeBox1 := cyclicPlane.WrapBoundingBox(geometry.NewBoundingBoxAt(geometry.NewVec(0, 0), 2, 2))
 
 	cyclicPlane.Translate(&planeBox1, geometry.NewVec(0, 1))
 
@@ -105,7 +105,7 @@ func TestQuadTree_FindNeighbors_ForCyclicBoundedPlane_WithFrags(t *testing.T) {
 		i++
 	}
 
-	planeBox2 := geometry.NewPlaneBox(geometry.NewVec(0, 0), 4, 1)
+	planeBox2 := cyclicPlane.WrapBoundingBox(geometry.NewBoundingBoxAt(geometry.NewVec(0, 0), 4, 1))
 
 	cyclicPlane.Translate(&planeBox2, geometry.NewVec(1, 0))
 

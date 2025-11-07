@@ -29,7 +29,7 @@ func NewQuadTree[T geometry.SupportedNumeric, K comparable](
 	plane geometry.Plane[T],
 	opts ...QuadTreeOption[T, K],
 ) *QuadTree[T, K] {
-	rootBounds := plane.Viewport().BoundingBox
+	rootBounds := plane.Viewport()
 	root := newNode[T, K](rootBounds, nil)
 	qt := &QuadTree[T, K]{
 		root:     root,
