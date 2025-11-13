@@ -1,48 +1,32 @@
 package quadtree
 
 import (
-	"sort"
-
 	"github.com/kjkrol/gokg/pkg/geometry"
 	"github.com/kjkrol/gokq/pkg/dfs"
 )
 
-type QuadTreeFinder[T geometry.SupportedNumeric, K comparable] struct {
-	strategy QuadTreeFinderStrategy[T, K]
+type QuadTreeFinder[T geometry.SupportedNumeric] struct {
+	strategy QuadTreeFinderStrategy[T]
 }
 
-func NewQuadTreeFinder[T geometry.SupportedNumeric, K comparable](strategy QuadTreeFinderStrategy[T, K]) QuadTreeFinder[T, K] {
-	return QuadTreeFinder[T, K]{strategy: strategy}
+func NewQuadTreeFinder[T geometry.SupportedNumeric](strategy QuadTreeFinderStrategy[T]) QuadTreeFinder[T] {
+	return QuadTreeFinder[T]{strategy: strategy}
 }
 
-func (qf QuadTreeFinder[T, K]) FindNeighbors(root *Node[T, K], target Item[T, K], margin T) []Item[T, K] {
+func (qf QuadTreeFinder[T]) FindNeighbors(root *Node[T], target Item[T], margin T) []Item[T] {
 
 	nodeIntersectionDetection := qf.strategy.NodeIntersectionDetectionFactory(target, margin)
 	itemsInRangeDetection := qf.strategy.ItemsInRangeDetectionFactory(target, margin)
-	neighbors := make([]Item[T, K], 0)
+	neighbors := make([]Item[T], 0)
 
-	dfs.DFS(root, struct{}{}, func(node *Node[T, K], _ struct{}) (dfs.DFSControl, struct{}) {
+	dfs.DFS(root, struct{}{}, func(node *Node[T], _ struct{}) (dfs.DFSControl, struct{}) {
 		if !nodeIntersectionDetection(*node) {
 			return dfs.DFSControl{Skip: true}, struct{}{}
 		}
-		itemsInRangeDetection(*node, func(item Item[T, K]) { neighbors = append(neighbors, item) })
+		itemsInRangeDetection(*node, func(item Item[T]) { neighbors = append(neighbors, item) })
 		return dfs.DFSControl{}, struct{}{}
 	})
 
-	sortNeighbors(neighbors)
+	sortItems(neighbors)
 	return neighbors
-}
-
-func sortNeighbors[T geometry.SupportedNumeric, K comparable](items []Item[T, K]) {
-	sort.Slice(items, func(i, j int) bool {
-		ai, aj := items[i].Bound(), items[j].Bound()
-		first, _ := geometry.SortBoxesBy(
-			ai, aj,
-			func(box geometry.BoundingBox[T]) T { return box.TopLeft.Y },
-			func(box geometry.BoundingBox[T]) T { return box.TopLeft.X },
-			func(box geometry.BoundingBox[T]) T { return box.BottomRight.Y },
-			func(box geometry.BoundingBox[T]) T { return box.BottomRight.X },
-		)
-		return first.Equals(ai)
-	})
 }

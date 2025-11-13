@@ -5,16 +5,27 @@ import (
 	"github.com/kjkrol/gokq/pkg/dfs"
 )
 
-type QuadTreeRemover[T geometry.SupportedNumeric, K comparable] struct {
+type QuadTreeRemover[T geometry.SupportedNumeric] struct {
 	capacity int
 }
 
-func (qr QuadTreeRemover[T, K]) remove(node *Node[T, K], item Item[T, K]) bool {
+func (qr QuadTreeRemover[T]) remove(node *Node[T], item Item[T]) bool {
+	if removedNode, ok := qr.removeInternal(node, item); ok {
+		qr.compressPath(removedNode)
+		return true
+	}
+	return false
+}
+
+func (qr QuadTreeRemover[T]) RemoveWithoutCompression(node *Node[T], item Item[T]) (*Node[T], bool) {
+	return qr.removeInternal(node, item)
+}
+
+func (qr QuadTreeRemover[T]) removeInternal(node *Node[T], item Item[T]) (*Node[T], bool) {
 	if node.isNode() {
 		if child := node.findFittingChild(item.Bound()); child != nil {
-			if qr.remove(child, item) {
-				qr.tryCompress(node)
-				return true
+			if removedNode, ok := qr.removeInternal(child, item); ok {
+				return removedNode, true
 			}
 		}
 	}
@@ -22,15 +33,20 @@ func (qr QuadTreeRemover[T, K]) remove(node *Node[T, K], item Item[T, K]) bool {
 	for i, it := range node.items {
 		if it == item {
 			node.items = append(node.items[:i], node.items[i+1:]...)
-			qr.tryCompress(node)
-			return true
+			return node, true
 		}
 	}
 
-	return false
+	return nil, false
 }
 
-func (qr QuadTreeRemover[T, K]) tryCompress(node *Node[T, K]) {
+func (qr QuadTreeRemover[T]) compressPath(node *Node[T]) {
+	for n := node; n != nil; n = n.parent {
+		qr.tryCompress(n)
+	}
+}
+
+func (qr QuadTreeRemover[T]) tryCompress(node *Node[T]) {
 	if !node.isNode() {
 		return
 	}
@@ -42,9 +58,9 @@ func (qr QuadTreeRemover[T, K]) tryCompress(node *Node[T, K]) {
 	}
 }
 
-func (qr QuadTreeRemover[T, K]) collectItems(n *Node[T, K]) []Item[T, K] {
-	items := make([]Item[T, K], 0, len(n.items))
-	dfs.DFS(n, struct{}{}, func(node *Node[T, K], _ struct{}) (dfs.DFSControl, struct{}) {
+func (qr QuadTreeRemover[T]) collectItems(n *Node[T]) []Item[T] {
+	items := make([]Item[T], 0, len(n.items))
+	dfs.DFS(n, struct{}{}, func(node *Node[T], _ struct{}) (dfs.DFSControl, struct{}) {
 		items = append(items, node.items...)
 		return dfs.DFSControl{}, struct{}{}
 	})

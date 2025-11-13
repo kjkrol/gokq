@@ -18,7 +18,13 @@ func (t *TestItem[T]) Bound() geometry.BoundingBox[T] {
 	return t.BoundingBox
 }
 
-func (t TestItem[T]) Id() uint64 { return t.id }
+func (t *TestItem[T]) SameID(other Item[T]) bool {
+	o, ok := other.(*TestItem[T])
+	if !ok {
+		return false
+	}
+	return t.id == o.id
+}
 
 func newTestItemPointAtPos[T geometry.SupportedNumeric](x, y T) *TestItem[T] {
 	vec := geometry.NewVec(x, y)
@@ -47,7 +53,7 @@ func newTestItemFromBox[T geometry.SupportedNumeric](box geometry.BoundingBox[T]
 func ExampleQuadTree_FindNeighbors_targetInTree() {
 	// Create a bounded plane and a quadtree
 	boundedPlane := geometry.NewBoundedPlane(64, 64)
-	qtree := NewQuadTree[int, uint64](boundedPlane)
+	qtree := NewQuadTree(boundedPlane)
 	defer qtree.Close()
 
 	// Add items to the quadtree
@@ -81,7 +87,7 @@ func ExampleQuadTree_FindNeighbors_targetInTree() {
 func ExampleQuadTree_FindNeighbors_targetNotInTree() {
 	// Create a bounded plane and a quadtree
 	boundedPlane := geometry.NewBoundedPlane(64, 64)
-	qtree := NewQuadTree[int, uint64](boundedPlane)
+	qtree := NewQuadTree(boundedPlane)
 	defer qtree.Close()
 
 	// Add items to the quadtree

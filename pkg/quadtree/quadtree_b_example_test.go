@@ -9,7 +9,7 @@ import (
 func ExampleQuadTree() {
 	// Tworzymy płaszczyznę i QuadTree
 	boundedPlane := geometry.NewBoundedPlane(64, 64)
-	qtree := NewQuadTree[int, uint64](boundedPlane)
+	qtree := NewQuadTree(boundedPlane)
 	defer qtree.Close()
 
 	// Dodajemy kilka obiektów jako boxy 1x1
@@ -58,7 +58,7 @@ func ExampleQuadTree() {
 func ExampleQuadTree_largeBoxes() {
 	// Tworzymy płaszczyznę i QuadTree
 	boundedPlane := geometry.NewBoundedPlane(64.0, 64.0)
-	qtree := NewQuadTree[float64, uint64](boundedPlane)
+	qtree := NewQuadTree(boundedPlane)
 	defer qtree.Close()
 
 	// Dodajemy boxy 2x2

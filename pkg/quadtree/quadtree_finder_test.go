@@ -9,7 +9,7 @@ import (
 
 func TestQuadTree_Probe_For_BoundedPlane(t *testing.T) {
 	boundedPlane := geometry.NewBoundedPlane(100, 100)
-	qtree := NewQuadTree[int, uint64](boundedPlane)
+	qtree := NewQuadTree(boundedPlane)
 	box := geometry.NewBoundingBoxAt(geometry.NewVec(0, 0), 2, 2)
 	item := newTestItemFromBox(box)
 
@@ -22,7 +22,7 @@ func TestQuadTree_Probe_For_BoundedPlane(t *testing.T) {
 
 func TestQuadTree_FindNeighbors_ForCyclicBoundedPlane_WithFrags(t *testing.T) {
 	cyclicPlane := geometry.NewCyclicBoundedPlane(4, 4)
-	qtree := NewQuadTree[int, uint64](cyclicPlane)
+	qtree := NewQuadTree(cyclicPlane)
 	defer qtree.Close()
 
 	target := newTestItemFromPos(0, 0, 1, 1)
@@ -66,7 +66,7 @@ func TestQuadTree_FindNeighbors_ForCyclicBoundedPlane_WithFrags(t *testing.T) {
 	qtree.Add(item4)
 
 	// Przy margin=2 znajdziemy także boxy wrapowane
-	expected := []Item[int, uint64]{item2Frags[0], item3, item1, item4, item2}
+	expected := []Item[int]{item2Frags[0], item3, item1, item4, item2}
 	neighbors := qtree.FindNeighbors(target, 2)
 
 	if !sliceutils.SameElements(neighbors, expected) {
