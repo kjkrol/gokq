@@ -9,7 +9,7 @@ import (
 
 func TestQuadTreeBox_FindNeighborsSimple(t *testing.T) {
 	boundedPlane := geometry.NewBoundedPlane(64.0, 64.0)
-	qtree := NewQuadTree[float64, uint64](boundedPlane)
+	qtree := NewQuadTree(boundedPlane)
 	defer qtree.Close()
 
 	target := newTestItemFromPos(10.0, 10.0, 12.0, 12.0)
@@ -25,7 +25,7 @@ func TestQuadTreeBox_FindNeighborsSimple(t *testing.T) {
 	qtree.Add(item4)
 	qtree.Add(itemFar)
 
-	expected := []Item[float64, uint64]{item1, item2, item3, item4}
+	expected := []Item[float64]{item1, item2, item3, item4}
 	neighbors := qtree.FindNeighbors(target, 1.0)
 
 	if !sliceutils.SameElements(neighbors, expected) {
@@ -35,7 +35,7 @@ func TestQuadTreeBox_FindNeighborsSimple(t *testing.T) {
 
 func TestQuadTreeBox_ForBoundedPlane(t *testing.T) {
 	boundedPlane := geometry.NewBoundedPlane(4, 4)
-	qtree := NewQuadTree[int, uint64](boundedPlane)
+	qtree := NewQuadTree(boundedPlane)
 	defer qtree.Close()
 
 	target := newTestItemFromPos(0, 0, 1, 1)
@@ -47,7 +47,7 @@ func TestQuadTreeBox_ForBoundedPlane(t *testing.T) {
 	qtree.Add(item2)
 	qtree.Add(item3)
 
-	expected := []Item[int, uint64]{item1, item2}
+	expected := []Item[int]{item1, item2}
 	neighbors := qtree.FindNeighbors(target, 1)
 
 	if !sliceutils.SameElements(neighbors, expected) {
@@ -57,7 +57,7 @@ func TestQuadTreeBox_ForBoundedPlane(t *testing.T) {
 
 func TestQuadTreeBox_ForCyclicBoundedPlane(t *testing.T) {
 	cyclicPlane := geometry.NewCyclicBoundedPlane(4, 4)
-	qtree := NewQuadTree[int, uint64](cyclicPlane)
+	qtree := NewQuadTree(cyclicPlane)
 	defer qtree.Close()
 
 	target := newTestItemFromPos(0, 0, 1, 1)
@@ -72,7 +72,7 @@ func TestQuadTreeBox_ForCyclicBoundedPlane(t *testing.T) {
 	qtree.Add(item4)
 
 	// Przy margin=1 znajdziemy tylko item3 i item4
-	expected := []Item[int, uint64]{item3, item4}
+	expected := []Item[int]{item3, item4}
 	neighbors := qtree.FindNeighbors(target, 1)
 
 	if !sliceutils.SameElements(neighbors, expected) {
@@ -82,7 +82,7 @@ func TestQuadTreeBox_ForCyclicBoundedPlane(t *testing.T) {
 
 func TestQuadTree_RemoveCascadeCompression_Box(t *testing.T) {
 	plane := geometry.NewBoundedPlane(64.0, 64.0)
-	qtree := NewQuadTree[float64, uint64](plane)
+	qtree := NewQuadTree(plane)
 	defer qtree.Close()
 
 	// malutki box (1x1), żeby dało się wcisnąć w child
@@ -150,7 +150,7 @@ func TestQuadTree_RemoveCascadeCompression_Box(t *testing.T) {
 
 func TestQuadTree_BoxItems_LargeStayInParent_SmallGoToChildren(t *testing.T) {
 	plane := geometry.NewBoundedPlane(64.0, 64.0)
-	qtree := NewQuadTree[float64, uint64](plane)
+	qtree := NewQuadTree(plane)
 	defer qtree.Close()
 
 	// Dodajemy 6 dużych boxów, każdy obejmuje połowę przestrzeni
@@ -198,7 +198,7 @@ func TestQuadTree_BoxItems_LargeStayInParent_SmallGoToChildren(t *testing.T) {
 
 func TestQuadTree_Box_CountDepthAllItemsLeafRectangles(t *testing.T) {
 	plane := geometry.NewBoundedPlane(16.0, 16.0)
-	qtree := NewQuadTree[float64, uint64](plane)
+	qtree := NewQuadTree(plane)
 	defer qtree.Close()
 
 	// początkowo puste
@@ -267,7 +267,7 @@ func TestQuadTree_Box_CountDepthAllItemsLeafRectangles(t *testing.T) {
 
 func TestSortNeighbors_BottomRightTieBreak(t *testing.T) {
 	plane := geometry.NewBoundedPlane(16.0, 16.0)
-	qtree := NewQuadTree[float64, uint64](plane)
+	qtree := NewQuadTree(plane)
 	defer qtree.Close()
 
 	// Box A i B mają identyczne TopLeft
@@ -278,16 +278,16 @@ func TestSortNeighbors_BottomRightTieBreak(t *testing.T) {
 	box3 := geometry.NewBoundingBoxAt(geometry.NewVec(1.0, 1), 3, 2) // różni się tylko BottomRight.X
 	c := newTestItemFromBox(box3)
 
-	items := []Item[float64, uint64]{b, a, c}
+	items := []Item[float64]{b, a, c}
 
 	// sortujemy
-	sortNeighbors(items)
+	sortItems(items)
 
 	// oczekiwana kolejność:
 	// najpierw a (BottomRight.Y=3),
 	// potem b (BottomRight.Y=4),
 	// na końcu c (BottomRight.Y=3 ale BottomRight.X=4 > 3).
-	expected := []Item[float64, uint64]{a, c, b}
+	expected := []Item[float64]{a, c, b}
 
 	for i, it := range items {
 		if it != expected[i] {

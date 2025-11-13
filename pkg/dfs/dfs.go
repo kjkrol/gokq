@@ -23,7 +23,11 @@ type DFSStepFunc[N ChildCarrier[N], A any] func(node N, acc A) (DFSControl, A)
 // copied into the first frame, and each returned accumulator is stored on the
 // branch that produced it, so sibling subtrees never share state unless A is a
 // reference type.
-func DFS[N ChildCarrier[N], A any](root N, accInitial A, step DFSStepFunc[N, A]) {
+func DFS[N ChildCarrier[N], A any](
+	root N,
+	accInitial A,
+	step DFSStepFunc[N, A],
+) {
 	type frame struct {
 		node N
 		acc  A

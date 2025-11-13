@@ -2,33 +2,33 @@ package quadtree
 
 import "github.com/kjkrol/gokg/pkg/geometry"
 
-type NodeIntersectionDetection[T geometry.SupportedNumeric, K comparable] func(Node[T, K]) bool
-type ItemsInRangeDetection[T geometry.SupportedNumeric, K comparable] func(Node[T, K], func(Item[T, K]))
+type NodeIntersectionDetection[T geometry.SupportedNumeric] func(Node[T]) bool
+type ItemsInRangeDetection[T geometry.SupportedNumeric] func(Node[T], func(Item[T]))
 
-type QuadTreeFinderStrategy[T geometry.SupportedNumeric, K comparable] interface {
-	NodeIntersectionDetectionFactory(target Item[T, K], margin T) NodeIntersectionDetection[T, K]
-	ItemsInRangeDetectionFactory(target Item[T, K], maring T) ItemsInRangeDetection[T, K]
+type QuadTreeFinderStrategy[T geometry.SupportedNumeric] interface {
+	NodeIntersectionDetectionFactory(target Item[T], margin T) NodeIntersectionDetection[T]
+	ItemsInRangeDetectionFactory(target Item[T], maring T) ItemsInRangeDetection[T]
 }
 
 // ----------------- DefaultQuadTreeFinderStrategy -----------------
 
-type DefaultQuadTreeFinderStrategy[T geometry.SupportedNumeric, K comparable] struct {
+type DefaultQuadTreeFinderStrategy[T geometry.SupportedNumeric] struct {
 	geometry.Plane[T]
 }
 
-func NewDefaultQuadTreeFinderStrategy[T geometry.SupportedNumeric, K comparable](
+func NewDefaultQuadTreeFinderStrategy[T geometry.SupportedNumeric](
 	plane geometry.Plane[T],
-) QuadTreeFinderStrategy[T, K] {
-	return DefaultQuadTreeFinderStrategy[T, K]{plane}
+) QuadTreeFinderStrategy[T] {
+	return DefaultQuadTreeFinderStrategy[T]{plane}
 }
 
-func (s DefaultQuadTreeFinderStrategy[T, K]) NodeIntersectionDetectionFactory(
-	target Item[T, K],
+func (s DefaultQuadTreeFinderStrategy[T]) NodeIntersectionDetectionFactory(
+	target Item[T],
 	margin T,
-) NodeIntersectionDetection[T, K] {
+) NodeIntersectionDetection[T] {
 	probe := s.Plane.WrapBoundingBox(target.Bound())
 	s.Plane.Expand(&probe, margin)
-	return func(node Node[T, K]) bool {
+	return func(node Node[T]) bool {
 		intersection := node.bounds.Intersects(probe.BoundingBox)
 		for _, frag := range probe.Fragments() {
 			intersection = intersection || node.bounds.Intersects(frag)
@@ -37,14 +37,14 @@ func (s DefaultQuadTreeFinderStrategy[T, K]) NodeIntersectionDetectionFactory(
 	}
 }
 
-func (s DefaultQuadTreeFinderStrategy[T, K]) ItemsInRangeDetectionFactory(
-	target Item[T, K],
+func (s DefaultQuadTreeFinderStrategy[T]) ItemsInRangeDetectionFactory(
+	target Item[T],
 	margin T,
-) ItemsInRangeDetection[T, K] {
+) ItemsInRangeDetection[T] {
 	boundingBoxDistance := s.Plane.BoundingBoxDistance()
-	return func(node Node[T, K], inRangeApply func(Item[T, K])) {
+	return func(node Node[T], inRangeApply func(Item[T])) {
 		for _, item := range node.items {
-			if item.Id() == target.Id() {
+			if item.SameID(target) {
 				continue
 			}
 			if boundingBoxDistance(target.Bound(), item.Bound()) <= margin {

@@ -2,12 +2,12 @@ package quadtree
 
 import "github.com/kjkrol/gokg/pkg/geometry"
 
-type QuadTreeAppender[T geometry.SupportedNumeric, K comparable] struct {
+type QuadTreeAppender[T geometry.SupportedNumeric] struct {
 	maxDepth int
 	capacity int
 }
 
-func (qa QuadTreeAppender[T, K]) add(node *Node[T, K], item Item[T, K], depth int) bool {
+func (qa QuadTreeAppender[T]) add(node *Node[T], item Item[T], depth int) bool {
 
 	if !node.bounds.Contains(item.Bound()) {
 		return false
@@ -30,8 +30,8 @@ func (qa QuadTreeAppender[T, K]) add(node *Node[T, K], item Item[T, K], depth in
 	return true
 }
 
-func (qa QuadTreeAppender[T, K]) redistributeItems(node *Node[T, K], depth int) {
-	remaining := make([]Item[T, K], 0, len(node.items))
+func (qa QuadTreeAppender[T]) redistributeItems(node *Node[T], depth int) {
+	remaining := make([]Item[T], 0, len(node.items))
 	moved := 0
 
 	for _, item := range node.items {
@@ -51,9 +51,9 @@ func (qa QuadTreeAppender[T, K]) redistributeItems(node *Node[T, K], depth int) 
 	}
 }
 
-func (qa QuadTreeAppender[T, K]) createChilds(node *Node[T, K]) {
+func (qa QuadTreeAppender[T]) createChilds(node *Node[T]) {
 	childRectangles := node.bounds.Split()
-	node.childs = make([]*Node[T, K], qa.capacity)
+	node.childs = make([]*Node[T], qa.capacity)
 	for i, rect := range childRectangles {
 		node.childs[i] = newNode(rect, node)
 	}
