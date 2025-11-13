@@ -1,6 +1,9 @@
 package quadtree
 
-import "github.com/kjkrol/gokg/pkg/geometry"
+import (
+	"github.com/kjkrol/gokg/pkg/geometry"
+	"github.com/kjkrol/gokq/pkg/dfs"
+)
 
 type QuadTreeRemover[T geometry.SupportedNumeric, K comparable] struct {
 	capacity int
@@ -40,9 +43,10 @@ func (qr QuadTreeRemover[T, K]) tryCompress(node *Node[T, K]) {
 }
 
 func (qr QuadTreeRemover[T, K]) collectItems(n *Node[T, K]) []Item[T, K] {
-	items := append([]Item[T, K]{}, n.items...)
-	for _, ch := range n.childs {
-		items = append(items, qr.collectItems(ch)...)
-	}
+	items := make([]Item[T, K], 0, len(n.items))
+	dfs.DFS(n, struct{}{}, func(node *Node[T, K], _ struct{}) (dfs.DFSControl, struct{}) {
+		items = append(items, node.items...)
+		return dfs.DFSControl{}, struct{}{}
+	})
 	return items
 }

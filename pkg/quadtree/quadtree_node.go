@@ -1,6 +1,9 @@
 package quadtree
 
-import "github.com/kjkrol/gokg/pkg/geometry"
+import (
+	"github.com/kjkrol/gokg/pkg/geometry"
+	"github.com/kjkrol/gokq/pkg/dfs"
+)
 
 type Node[T geometry.SupportedNumeric, K comparable] struct {
 	bounds geometry.BoundingBox[T]
@@ -25,6 +28,10 @@ func (n *Node[T, K]) findFittingChild(r geometry.BoundingBox[T]) *Node[T, K] {
 	return nil
 }
 
+func (n *Node[T, K]) Children() []*Node[T, K] {
+	return n.childs
+}
+
 func (n *Node[T, K]) close() {
 	for _, child := range n.childs {
 		child.close()
@@ -35,33 +42,40 @@ func (n *Node[T, K]) close() {
 }
 
 func (n *Node[T, K]) allItems() []Item[T, K] {
-	items := append([]Item[T, K]{}, n.items...)
-	for _, ch := range n.childs {
-		items = append(items, ch.allItems()...)
-	}
+	items := []Item[T, K]{}
+
+	dfs.DFS(n, struct{}{}, func(node *Node[T, K], _ struct{}) (dfs.DFSControl, struct{}) {
+		items = append(items, node.items...)
+		return dfs.DFSControl{}, struct{}{}
+	})
+
 	return items
 }
 
 func (n *Node[T, K]) depth() int {
-	if n.isLeaf() {
-		return 1
-	}
-	maxChildDepth := 0
-	for _, ch := range n.childs {
-		if d := ch.depth(); d > maxChildDepth {
-			maxChildDepth = d
+	maxDepth := 0
+
+	dfs.DFS(n, 0, func(node *Node[T, K], acc int) (dfs.DFSControl, int) {
+		acc = acc + 1
+		if acc > maxDepth {
+			maxDepth = acc
 		}
-	}
-	return 1 + maxChildDepth
+		return dfs.DFSControl{}, acc
+	})
+
+	return maxDepth
 }
 
-func (n *Node[T, K]) leafRectangles() []geometry.BoundingBox[T] {
-	if n.isLeaf() {
-		return []geometry.BoundingBox[T]{n.bounds}
-	}
-	var rectangles []geometry.BoundingBox[T]
-	for _, ch := range n.childs {
-		rectangles = append(rectangles, ch.leafRectangles()...)
-	}
+func (n *Node[T, K]) leafBounds() []geometry.BoundingBox[T] {
+	rectangles := []geometry.BoundingBox[T]{}
+
+	dfs.DFS(n, struct{}{}, func(node *Node[T, K], _ struct{}) (dfs.DFSControl, struct{}) {
+		if node.isLeaf() {
+			rectangles = append(rectangles, node.bounds)
+			return dfs.DFSControl{Skip: true}, struct{}{}
+		}
+		return dfs.DFSControl{}, struct{}{}
+	})
+
 	return rectangles
 }

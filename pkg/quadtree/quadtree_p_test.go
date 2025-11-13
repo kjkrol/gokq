@@ -190,8 +190,8 @@ func TestQuadTreeForCyclicBoundedPlaneWithLeavesIn5thGeneration(t *testing.T) {
 		{X: 93, Y: 93}, {X: 94, Y: 94}, {X: 95, Y: 95}, {X: 96, Y: 96},
 		{X: 97, Y: 97}, {X: 98, Y: 98}, {X: 99, Y: 99},
 	} {
-		shapeItem := newTestItemFromVec(point)
-		qtree.Add(shapeItem)
+		testItem := newTestItemFromVec(point)
+		qtree.Add(testItem)
 	}
 
 	expected := [2]Item[float64, uint64]{item2, item3}
@@ -363,8 +363,7 @@ func TestQuadTree_Point_CountDepthAllItemsLeafRectangles(t *testing.T) {
 	}
 	for _, lb := range leafs {
 		// sprawdzamy półotwartą logikę:
-		if lb.TopLeft.X < 0 || lb.TopLeft.Y < 0 ||
-			lb.BottomRight.X > plane.Size().X || lb.BottomRight.Y > plane.Size().Y {
+		if !plane.Viewport().Contains(lb) {
 			t.Errorf("leaf box %+v is outside plane bounds", lb)
 		}
 		if lb.TopLeft.X >= lb.BottomRight.X || lb.TopLeft.Y >= lb.BottomRight.Y {

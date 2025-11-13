@@ -4,6 +4,7 @@ import "github.com/kjkrol/gokg/pkg/geometry"
 
 type QuadTreeAppender[T geometry.SupportedNumeric, K comparable] struct {
 	maxDepth int
+	capacity int
 }
 
 func (qa QuadTreeAppender[T, K]) add(node *Node[T, K], item Item[T, K], depth int) bool {
@@ -21,7 +22,7 @@ func (qa QuadTreeAppender[T, K]) add(node *Node[T, K], item Item[T, K], depth in
 	}
 	node.items = append(node.items, item)
 
-	if len(node.items) > CAPACITY && node.isLeaf() && depth < qa.maxDepth {
+	if len(node.items) > qa.capacity && node.isLeaf() && depth < qa.maxDepth {
 		qa.createChilds(node)
 		qa.redistributeItems(node, depth)
 	}
@@ -52,7 +53,7 @@ func (qa QuadTreeAppender[T, K]) redistributeItems(node *Node[T, K], depth int) 
 
 func (qa QuadTreeAppender[T, K]) createChilds(node *Node[T, K]) {
 	childRectangles := node.bounds.Split()
-	node.childs = make([]*Node[T, K], CAPACITY)
+	node.childs = make([]*Node[T, K], qa.capacity)
 	for i, rect := range childRectangles {
 		node.childs[i] = newNode(rect, node)
 	}

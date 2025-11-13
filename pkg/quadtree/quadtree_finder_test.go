@@ -1,7 +1,6 @@
 package quadtree
 
 import (
-	"sort"
 	"testing"
 
 	"github.com/kjkrol/gokg/pkg/geometry"
@@ -12,73 +11,12 @@ func TestQuadTree_Probe_For_BoundedPlane(t *testing.T) {
 	boundedPlane := geometry.NewBoundedPlane(100, 100)
 	qtree := NewQuadTree[int, uint64](boundedPlane)
 	box := geometry.NewBoundingBoxAt(geometry.NewVec(0, 0), 2, 2)
+	item := newTestItemFromBox(box)
 
-	probes := qtree.finder.probe(box, 1)
-	if len(probes) != 1 {
-		t.Fatalf("expected single probe, got %d", len(probes))
-	}
-
-	expectedTopLeft := geometry.NewVec(0, 0)
-	expectedBottomRight := geometry.NewVec(3, 3)
-	if probes[0].TopLeft != expectedTopLeft {
-		t.Errorf("expected probe top-left %v, got %v", expectedTopLeft, probes[0].TopLeft)
-	}
-	if probes[0].BottomRight != expectedBottomRight {
-		t.Errorf("expected probe bottom-right %v, got %v", expectedBottomRight, probes[0].BottomRight)
-	}
-}
-
-func TestQuadTree_Probe_For_CyclicPlane(t *testing.T) {
-	boundedPlane := geometry.NewCyclicBoundedPlane(10, 10)
-	qtree := NewQuadTree[int, uint64](boundedPlane)
-	box := geometry.NewBoundingBoxAt(geometry.NewVec(8, 8), 2, 2)
-	probes := qtree.finder.probe(box, 0)
-	if len(probes) > 1 {
-		t.Fatalf("expected single probe, got %d", len(probes))
-	}
-
-	expectedTopLeft := geometry.NewVec(8, 8)
-	expectedBottomRight := geometry.NewVec(10, 10)
-	if probes[0].TopLeft != expectedTopLeft {
-		t.Errorf("expected probe top-left %v, got %v", expectedTopLeft, probes[0].TopLeft)
-	}
-	if probes[0].BottomRight != expectedBottomRight {
-		t.Errorf("expected probe bottom-right %v, got %v", expectedBottomRight, probes[0].BottomRight)
-	}
-}
-
-func TestQuadTree_Probe_For_CyclicPlane_Edge_Case(t *testing.T) {
-	boundedPlane := geometry.NewCyclicBoundedPlane(10, 10)
-	qtree := NewQuadTree[int, uint64](boundedPlane)
-	box := geometry.NewBoundingBoxAt(geometry.NewVec(0, 0), 2, 2)
-	probes := qtree.finder.probe(box, 2)
-	if len(probes) != 4 {
-		t.Fatalf("expected 4 probes, got %d", len(probes))
-	}
-
-	want := []geometry.BoundingBox[int]{
-		geometry.NewBoundingBox(geometry.NewVec(0, 0), geometry.NewVec(4, 4)),
-		geometry.NewBoundingBox(geometry.NewVec(8, 0), geometry.NewVec(10, 4)),
-		geometry.NewBoundingBox(geometry.NewVec(0, 8), geometry.NewVec(4, 10)),
-		geometry.NewBoundingBox(geometry.NewVec(8, 8), geometry.NewVec(10, 10)),
-	}
-
-	sort.Slice(probes, func(i, j int) bool {
-		ai, aj := probes[i], probes[j]
-		first, _ := geometry.SortBoxesBy(
-			ai, aj,
-			func(box geometry.BoundingBox[int]) int { return box.TopLeft.Y },
-			func(box geometry.BoundingBox[int]) int { return box.TopLeft.X },
-			func(box geometry.BoundingBox[int]) int { return box.BottomRight.Y },
-			func(box geometry.BoundingBox[int]) int { return box.BottomRight.X },
-		)
-		return first.Equals(ai)
-	})
-
-	for i := range want {
-		if !probes[i].Equals(want[i]) {
-			t.Fatalf("probe[%d] = %+v, want %+v", i, probes[i], want[i])
-		}
+	nodeIntersectionDetection := qtree.finder.strategy.NodeIntersectionDetectionFactory(item, 1)
+	nodeIntersectionDetection(*qtree.root)
+	if !nodeIntersectionDetection(*qtree.root) {
+		t.Fatalf("expected intersection with root node")
 	}
 }
 

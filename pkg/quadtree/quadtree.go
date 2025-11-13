@@ -31,11 +31,12 @@ func NewQuadTree[T geometry.SupportedNumeric, K comparable](
 ) *QuadTree[T, K] {
 	rootBounds := plane.Viewport()
 	root := newNode[T, K](rootBounds, nil)
+	finderStrategy := NewDefaultQuadTreeFinderStrategy[T, K](plane)
 	qt := &QuadTree[T, K]{
 		root:     root,
-		appender: QuadTreeAppender[T, K]{maxDepth: MAX_DEPTH},
+		appender: QuadTreeAppender[T, K]{maxDepth: MAX_DEPTH, capacity: CAPACITY},
 		remover:  QuadTreeRemover[T, K]{capacity: CAPACITY},
-		finder:   NewQuadTreeFinder[T, K](plane),
+		finder:   NewQuadTreeFinder(finderStrategy),
 	}
 	for _, opt := range opts {
 		opt(qt)
@@ -75,7 +76,7 @@ func (t *QuadTree[T, K]) AllItems() []Item[T, K] {
 
 // LeafBounds returns the bounding boxes of all current leaf nodes.
 func (t *QuadTree[T, K]) LeafBounds() []geometry.BoundingBox[T] {
-	return t.root.leafRectangles()
+	return t.root.leafBounds()
 }
 
 // FindNeighbors retrieves items within margin of the target's bounds.
