@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">
+
+  <style>
+    .axis { stroke:black; stroke-width:1; }
+    .grid { stroke:black; stroke-width:1; stroke-dasharray:2 2; }
+    .point { fill:black; }
+    .zline { stroke:black; stroke-width:2; fill:none; }
+    .xbit { fill:#1e90ff; font-family:monospace; font-size:14px; }
+    .ybit { fill:#ff3333; font-family:monospace; font-size:14px; }
+    .num { fill:black; font-family:monospace; font-size:14px; }
+    .xlabel { fill:#1e90ff; font-family:monospace; font-size:14px; }
+    .ylabel { fill:#ff3333; font-family:monospace; font-size:14px; }
+  </style>
+
+  <!-- Definicja grotów -->
+  <defs>
+    <marker id="arrowhead" markerWidth="6" markerHeight="6" refX="3" refY="3"
+            orient="auto">
+      <polygon points="0,0 6,3 0,6" fill="black" />
+    </marker>
+  </defs>
+
+  <!-- Siatka 2×2 -->
+  <line x1="50" y1="100" x2="150" y2="100" class="grid" />
+  <line x1="100" y1="50"  x2="100" y2="150" class="grid" />
+
+  <!-- OSIE ze strzałkami -->
+  <line x1="50" y1="50" x2="180" y2="50" class="axis"
+        marker-end="url(#arrowhead)" />  <!-- X -->
+  <line x1="50" y1="50" x2="50"  y2="180" class="axis"
+        marker-end="url(#arrowhead)" /> <!-- Y -->
+
+
+  <!-- Podpis osi X nad grotem -->
+  <text x="180" y="40" text-anchor="middle" class="xlabel">x</text>
+
+  <!-- Liczby osi X -->
+  <text x="50"  y="40" text-anchor="middle" class="num">0</text>
+  <text x="150" y="40" text-anchor="middle" class="num">1</text>
+
+  <!-- Podpis osi Y po lewej od grota -->
+  <text x="40" y="180" text-anchor="end" class="ylabel">y</text>
+
+  <!-- Liczby osi Y -->
+  <text x="40" y="55"  text-anchor="end" class="num">0</text>
+  <text x="40" y="155" text-anchor="end" class="num">1</text>
+
+  <!-- PUNKTY -->
+  <circle cx="50"  cy="50"  r="4" class="point" />
+  <circle cx="150" cy="50"  r="4" class="point" />
+  <circle cx="50"  cy="150" r="4" class="point" />
+  <circle cx="150" cy="150" r="4" class="point" />
+
+  <!-- Z-order -->
+  <polyline points="50,50 150,50 50,150 150,150" class="zline" />
+
+  <!-- Morton Codes -->
+  <text x="50"  y="70" text-anchor="middle">
+    <tspan class="ybit">0</tspan><tspan class="xbit">0</tspan>
+  </text>
+
+  <text x="150" y="70" text-anchor="middle">
+    <tspan class="ybit">0</tspan><tspan class="xbit">1</tspan>
+  </text>
+
+  <text x="50"  y="170" text-anchor="middle">
+    <tspan class="ybit">1</tspan><tspan class="xbit">0</tspan>
+  </text>
+
+  <text x="150" y="170" text-anchor="middle">
+    <tspan class="ybit">1</tspan><tspan class="xbit">1</tspan>
+  </text>
+
+</svg>
