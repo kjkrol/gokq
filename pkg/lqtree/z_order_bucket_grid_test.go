@@ -86,10 +86,10 @@ func TestZOrderBucketGridMove(t *testing.T) {
 	}
 	grid.BulkInsert(entries)
 
-	updates := NewEntriesUpdate[string](2)
+	updates := NewEntriesMove[string](2)
 	updates.Append(b, Pos{X: 1, Y: 1}, Pos{X: 4, Y: 1})
 	updates.Append(d, Pos{X: 3, Y: 3}, Pos{X: 5, Y: 5})
-	grid.BulkUpdate(updates)
+	grid.BulkMove(updates)
 
 	checks := []struct {
 		pos      Pos

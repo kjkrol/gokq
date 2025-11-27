@@ -68,7 +68,7 @@ func (qt *LinearQuadTree[T]) signleBulkRemove(entry Entry[T]) {
 	}
 }
 
-func (qt *LinearQuadTree[T]) BulkUpdate(moves EntriesUpdate[T]) {
+func (qt *LinearQuadTree[T]) BulkMove(moves EntriesMove[T]) {
 	old := moves.Old
 	new := moves.New
 

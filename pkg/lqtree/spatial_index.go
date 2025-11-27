@@ -9,19 +9,19 @@ type Entry[T any] struct {
 	Value *T
 }
 
-type EntriesUpdate[T any] struct {
+type EntriesMove[T any] struct {
 	Old []Entry[T]
 	New []Entry[T]
 }
 
-func NewEntriesUpdate[T any](capHint int) EntriesUpdate[T] {
-	return EntriesUpdate[T]{
+func NewEntriesMove[T any](capHint int) EntriesMove[T] {
+	return EntriesMove[T]{
 		Old: make([]Entry[T], 0, capHint),
 		New: make([]Entry[T], 0, capHint),
 	}
 }
 
-func (u *EntriesUpdate[T]) Append(value *T, oldPos, newPos Pos) {
+func (u *EntriesMove[T]) Append(value *T, oldPos, newPos Pos) {
 	if value == nil {
 		return
 	}
@@ -50,7 +50,7 @@ type SpatialIndex[T any] interface {
 	BulkRemove(entries []Entry[T])
 
 	// BulkMove – update objects (typically same Value, different XY).
-	BulkUpdate(updates EntriesUpdate[T])
+	BulkMove(moves EntriesMove[T])
 
 	// Get – single lookup at position (x,y).
 	Get(x, y uint32) (*T, bool)

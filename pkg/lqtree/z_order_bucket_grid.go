@@ -51,7 +51,7 @@ func (g *ZOrderBucketGrid[T]) BulkRemove(entries []Entry[T]) {
 
 //----------------------------------------------------------
 
-func (g *ZOrderBucketGrid[T]) BulkUpdate(moves EntriesUpdate[T]) {
+func (g *ZOrderBucketGrid[T]) BulkMove(moves EntriesMove[T]) {
 	if len(moves.Old) == 0 && len(moves.New) == 0 {
 		return
 	}

@@ -82,10 +82,10 @@ func TestLinearQuadTreeUpdateWithMove(t *testing.T) {
 	}
 	qt.BulkInsert(entries)
 
-	updates := NewEntriesUpdate[string](2)
+	updates := NewEntriesMove[string](2)
 	updates.Append(strPtr("b2"), Pos{X: 1, Y: 1}, Pos{X: 4, Y: 1})
 	updates.Append(strPtr("d2"), Pos{X: 3, Y: 3}, Pos{X: 4, Y: 4})
-	qt.BulkUpdate(updates)
+	qt.BulkMove(updates)
 
 	checks := []struct {
 		pos      Pos

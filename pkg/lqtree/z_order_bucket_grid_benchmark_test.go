@@ -41,8 +41,8 @@ func benchmarkZOrderBucketGridBulkMove(b *testing.B, totalEntries, movingEntries
 		}
 	}
 
-	forwardMoves := NewEntriesUpdate[string](movingEntries)
-	backwardMoves := NewEntriesUpdate[string](movingEntries)
+	forwardMoves := NewEntriesMove[string](movingEntries)
+	backwardMoves := NewEntriesMove[string](movingEntries)
 	for i := 0; i < movingEntries; i++ {
 		oldPos := entries[i].Pos
 		newPos := Pos{X: randCoord(src, benchMaxXY), Y: randCoord(src, benchMaxXY)}
@@ -59,9 +59,9 @@ func benchmarkZOrderBucketGridBulkMove(b *testing.B, totalEntries, movingEntries
 
 	for i := 0; b.Loop(); i++ {
 		if i%2 == 0 {
-			grid.BulkUpdate(forwardMoves)
+			grid.BulkMove(forwardMoves)
 		} else {
-			grid.BulkUpdate(backwardMoves)
+			grid.BulkMove(backwardMoves)
 		}
 	}
 }
