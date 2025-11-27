@@ -51,7 +51,7 @@ import (
 	"fmt"
 
 	"github.com/kjkrol/gokg/pkg/geometry"
-	"github.com/kjkrol/gokq/pkg/quadtree"
+	"github.com/kjkrol/gokq/pkg/qtree"
 )
 
 type point struct {
@@ -72,7 +72,7 @@ func (p *point) Id() string                           { return p.id }
 
 func main() {
 	plane := geometry.NewCyclicBoundedPlane[float64](64, 64)
-	tree := quadtree.NewQuadTree(plane)
+	tree := qtree.NewQuadTree(plane)
 	defer tree.Close()
 
 	for _, pt := range []*point{
@@ -90,7 +90,7 @@ func main() {
 }
 ```
 
-For more scenarios, explore the example-based tests in `pkg/quadtree`, which double as runnable docs.
+For more scenarios, explore the example-based tests in `pkg/qtree`, which double as runnable docs.
 
 
 ## How does a Quadtree speed up searching?

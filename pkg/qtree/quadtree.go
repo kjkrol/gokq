@@ -1,4 +1,4 @@
-package quadtree
+package qtree
 
 import (
 	"github.com/kjkrol/gokg/pkg/geometry"
