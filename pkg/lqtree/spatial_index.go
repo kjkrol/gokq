@@ -9,10 +9,32 @@ type Entry[T any] struct {
 	Value *T
 }
 
-type EntryMove[T any] struct {
-	Old   Pos
-	New   Pos
-	Value *T
+type EntriesUpdate[T any] struct {
+	Old []Entry[T]
+	New []Entry[T]
+}
+
+func NewEntriesUpdate[T any](capHint int) EntriesUpdate[T] {
+	return EntriesUpdate[T]{
+		Old: make([]Entry[T], 0, capHint),
+		New: make([]Entry[T], 0, capHint),
+	}
+}
+
+func (u *EntriesUpdate[T]) Append(value *T, oldPos, newPos Pos) {
+	if value == nil {
+		return
+	}
+
+	u.Old = append(u.Old, Entry[T]{
+		Pos:   oldPos,
+		Value: value,
+	})
+
+	u.New = append(u.New, Entry[T]{
+		Pos:   newPos,
+		Value: value,
+	})
 }
 
 type AABB struct {
@@ -25,10 +47,10 @@ type SpatialIndex[T any] interface {
 	BulkInsert(entries []Entry[T])
 
 	// BulkRemove – remove whatever is stored at the given positions.
-	BulkRemove(positions []Pos)
+	BulkRemove(entries []Entry[T])
 
-	// BulkMove – move objects (typically same Value, different XY).
-	BulkMove(moves []EntryMove[T])
+	// BulkMove – update objects (typically same Value, different XY).
+	BulkUpdate(updates EntriesUpdate[T])
 
 	// Get – single lookup at position (x,y).
 	Get(x, y uint32) (*T, bool)

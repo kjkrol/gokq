@@ -7,6 +7,7 @@ import (
 )
 
 const benchMaxXY = uint32(4096)
+const bucketSize = Size65536
 
 func BenchmarkZOrderBucketGridBulkMove(b *testing.B) {
 	cases := []struct {
@@ -19,6 +20,7 @@ func BenchmarkZOrderBucketGridBulkMove(b *testing.B) {
 		{"50k-20k", 50000, 20000},
 		{"100k-40k", 100000, 40000},
 		{"500k-200k", 500000, 200000},
+		{"5000k-2000k", 5000000, 2000000},
 	}
 
 	for _, tc := range cases {
@@ -32,24 +34,24 @@ func benchmarkZOrderBucketGridBulkMove(b *testing.B, totalEntries, movingEntries
 	src := rand.New(rand.NewSource(1))
 
 	entries := make([]Entry[string], totalEntries)
-	for i := range totalEntries {
+	for i := 0; i < totalEntries; i++ {
 		entries[i] = Entry[string]{
 			Pos:   Pos{X: randCoord(src, benchMaxXY), Y: randCoord(src, benchMaxXY)},
 			Value: strPtr(fmt.Sprintf("v%d", i)),
 		}
 	}
 
-	forwardMoves := make([]EntryMove[string], movingEntries)
-	backwardMoves := make([]EntryMove[string], movingEntries)
-	for i := range movingEntries {
+	forwardMoves := NewEntriesUpdate[string](movingEntries)
+	backwardMoves := NewEntriesUpdate[string](movingEntries)
+	for i := 0; i < movingEntries; i++ {
 		oldPos := entries[i].Pos
 		newPos := Pos{X: randCoord(src, benchMaxXY), Y: randCoord(src, benchMaxXY)}
 
-		forwardMoves[i] = EntryMove[string]{Old: oldPos, New: newPos}
-		backwardMoves[i] = EntryMove[string]{Old: newPos, New: oldPos}
+		forwardMoves.Append(entries[i].Value, oldPos, newPos)
+		backwardMoves.Append(entries[i].Value, newPos, oldPos)
 	}
 
-	grid := NewZOrderBucketGrid[string](Size65536, AABB{
+	grid := NewZOrderBucketGrid[string](bucketSize, AABB{
 		Min: Pos{0, 0},
 		Max: Pos{benchMaxXY, benchMaxXY},
 	})
@@ -57,9 +59,9 @@ func benchmarkZOrderBucketGridBulkMove(b *testing.B, totalEntries, movingEntries
 
 	for i := 0; b.Loop(); i++ {
 		if i%2 == 0 {
-			grid.BulkMove(forwardMoves)
+			grid.BulkUpdate(forwardMoves)
 		} else {
-			grid.BulkMove(backwardMoves)
+			grid.BulkUpdate(backwardMoves)
 		}
 	}
 }

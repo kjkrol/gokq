@@ -5,7 +5,7 @@ import "testing"
 func strPtr(s string) *string { return &s }
 
 func TestLinearQuadTreeInsertAndGet(t *testing.T) {
-	qt := NewLinearQuadTree[string](Size1024)
+	qt := NewLinearQuadTree[string](Size64)
 
 	entries := []Entry[string]{
 		{Pos: Pos{X: 0, Y: 0}, Value: strPtr("a")},
@@ -31,7 +31,7 @@ func TestLinearQuadTreeInsertAndGet(t *testing.T) {
 }
 
 func TestLinearQuadTreeRemove(t *testing.T) {
-	qt := NewLinearQuadTree[string](Size1024)
+	qt := NewLinearQuadTree[string](Size64)
 
 	entries := []Entry[string]{
 		{Pos: Pos{X: 0, Y: 0}, Value: strPtr("a")},
@@ -41,7 +41,10 @@ func TestLinearQuadTreeRemove(t *testing.T) {
 	}
 	qt.BulkInsert(entries)
 
-	qt.BulkRemove([]Pos{{X: 1, Y: 1}, {X: 3, Y: 3}})
+	qt.BulkRemove([]Entry[string]{
+		{Pos: Pos{X: 1, Y: 1}},
+		{Pos: Pos{X: 3, Y: 3}},
+	})
 
 	checks := []struct {
 		pos      Pos
@@ -69,7 +72,7 @@ func TestLinearQuadTreeRemove(t *testing.T) {
 }
 
 func TestLinearQuadTreeUpdateWithMove(t *testing.T) {
-	qt := NewLinearQuadTree[string](Size1024)
+	qt := NewLinearQuadTree[string](Size64)
 
 	entries := []Entry[string]{
 		{Pos: Pos{X: 0, Y: 0}, Value: strPtr("a")},
@@ -79,11 +82,10 @@ func TestLinearQuadTreeUpdateWithMove(t *testing.T) {
 	}
 	qt.BulkInsert(entries)
 
-	moves := []EntryMove[string]{
-		{Old: Pos{X: 1, Y: 1}, New: Pos{X: 4, Y: 1}, Value: strPtr("b2")},
-		{Old: Pos{X: 3, Y: 3}, New: Pos{X: 4, Y: 4}, Value: strPtr("d2")},
-	}
-	qt.BulkMove(moves)
+	updates := NewEntriesUpdate[string](2)
+	updates.Append(strPtr("b2"), Pos{X: 1, Y: 1}, Pos{X: 4, Y: 1})
+	updates.Append(strPtr("d2"), Pos{X: 3, Y: 3}, Pos{X: 4, Y: 4})
+	qt.BulkUpdate(updates)
 
 	checks := []struct {
 		pos      Pos
@@ -113,7 +115,7 @@ func TestLinearQuadTreeUpdateWithMove(t *testing.T) {
 }
 
 func TestLinearQuadTreeQueryRange(t *testing.T) {
-	qt := NewLinearQuadTree[string](Size1024)
+	qt := NewLinearQuadTree[string](Size64)
 
 	// Clustered points: one center with 4 neighbors
 	cluster := []Entry[string]{

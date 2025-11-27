@@ -27,51 +27,67 @@ func NewLinearQuadTree[T any](size LQTSize) *LinearQuadTree[T] {
 }
 
 func (qt *LinearQuadTree[T]) BulkInsert(entries []Entry[T]) {
-	for i := range entries {
-		entry := entries[i]
-		if !qt.inBounds(entry.X, entry.Y) || entry.Value == nil {
-			continue
-		}
-		qt.setCell(NewMortonCode(entry.X, entry.Y), entry.Value)
+	for _, entry := range entries {
+		qt.singleBulkInsert(entry)
 	}
 }
 
-func (qt *LinearQuadTree[T]) BulkRemove(positions []Pos) {
-	for i := range positions {
-		pos := positions[i]
-		if !qt.inBounds(pos.X, pos.Y) {
-			continue
-		}
+func (qt *LinearQuadTree[T]) singleBulkInsert(entry Entry[T]) {
+	if !qt.inBounds(entry.X, entry.Y) || entry.Value == nil {
+		return
+	}
+	qt.setCell(NewMortonCode(entry.X, entry.Y), entry.Value)
+}
 
-		code := NewMortonCode(pos.X, pos.Y)
-		if qt.cells[code] != nil {
+func (qt *LinearQuadTree[T]) BulkRemove(entities []Entry[T]) {
+	for _, entry := range entities {
+		qt.signleBulkRemove(entry)
+	}
+}
+
+func (qt *LinearQuadTree[T]) signleBulkRemove(entry Entry[T]) {
+	pos := entry.Pos
+
+	if !qt.inBounds(pos.X, pos.Y) {
+		return
+	}
+
+	code := NewMortonCode(pos.X, pos.Y)
+	current := qt.cells[code]
+
+	// Jeśli Value w Entry jest ustawione, pilnujemy żeby usunąć dokładnie ten wskaźnik.
+	// Jeśli Value == nil, zachowujemy się jak wcześniej: "usuń cokolwiek tam jest".
+	if entry.Value != nil {
+		if current == entry.Value {
+			qt.setCell(code, nil)
+		}
+	} else {
+		if current != nil {
 			qt.setCell(code, nil)
 		}
 	}
 }
 
-func (qt *LinearQuadTree[T]) BulkMove(moves []EntryMove[T]) {
-	for i := range moves {
-		move := moves[i]
+func (qt *LinearQuadTree[T]) BulkUpdate(moves EntriesUpdate[T]) {
+	old := moves.Old
+	new := moves.New
 
-		oldInBounds := qt.inBounds(move.Old.X, move.Old.Y)
-		newInBounds := qt.inBounds(move.New.X, move.New.Y)
-
-		var value *T = move.Value
-
-		if oldInBounds {
-			oldCode := NewMortonCode(move.Old.X, move.Old.Y)
-			if value == nil {
-				value = qt.cells[oldCode]
-			}
-			if qt.cells[oldCode] != nil {
-				qt.setCell(oldCode, nil)
+	for i := range old {
+		pos := old[i].Pos
+		if qt.inBounds(pos.X, pos.Y) {
+			code := NewMortonCode(pos.X, pos.Y)
+			if qt.cells[code] != nil {
+				qt.setCell(code, nil)
 			}
 		}
+	}
 
-		if newInBounds && value != nil {
-			qt.setCell(NewMortonCode(move.New.X, move.New.Y), value)
+	for i := range new {
+		pos := new[i].Pos
+		if !qt.inBounds(pos.X, pos.Y) || new[i].Value == nil {
+			continue
 		}
+		qt.setCell(NewMortonCode(pos.X, pos.Y), new[i].Value)
 	}
 }
 

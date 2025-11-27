@@ -28,93 +28,39 @@ func NewZOrderBucketGrid[T any](bucketstSize LQTSize, bound AABB) *ZOrderBucketG
 }
 
 func (g *ZOrderBucketGrid[T]) BulkInsert(entries []Entry[T]) {
-	if len(entries) == 0 {
+	g.processEntriesOneByOne(
+		entries,
+		func(e Entry[T]) bool { return e.Value != nil && g.inBounds(e.Pos) },
+		true,
+		func(bucket *LinearQuadTree[T], locals Entry[T]) {
+			bucket.singleBulkInsert(locals)
+		},
+	)
+}
+
+func (g *ZOrderBucketGrid[T]) BulkRemove(entries []Entry[T]) {
+	g.processEntriesOneByOne(
+		entries,
+		func(e Entry[T]) bool { return g.inBounds(e.Pos) },
+		false,
+		func(bucket *LinearQuadTree[T], locals Entry[T]) {
+			bucket.signleBulkRemove(locals)
+		},
+	)
+}
+
+//----------------------------------------------------------
+
+func (g *ZOrderBucketGrid[T]) BulkUpdate(moves EntriesUpdate[T]) {
+	if len(moves.Old) == 0 && len(moves.New) == 0 {
 		return
 	}
 
-	perBucket := make(map[ChunkKey][]Entry[T])
-
-	for i := range entries {
-		entry := entries[i]
-		if entry.Value == nil || !g.inBounds(entry.Pos) {
-			continue
-		}
-
-		key, local := g.chunkKey(entry.Pos)
-		perBucket[key] = append(perBucket[key], Entry[T]{Pos: local, Value: entry.Value})
-	}
-
-	for key, bucketEntries := range perBucket {
-		bucket := g.ensureBucket(key)
-		before := bucket.Count()
-		bucket.BulkInsert(bucketEntries)
-		g.adjustCount(before, bucket.Count())
-	}
+	g.BulkRemove(moves.Old)
+	g.BulkInsert(moves.New)
 }
 
-func (g *ZOrderBucketGrid[T]) BulkRemove(positions []Pos) {
-	if len(positions) == 0 {
-		return
-	}
-
-	perBucket := make(map[ChunkKey][]Pos)
-
-	for i := range positions {
-		if !g.inBounds(positions[i]) {
-			continue
-		}
-
-		key, local := g.chunkKey(positions[i])
-		if g.buckets[key] == nil {
-			continue
-		}
-		perBucket[key] = append(perBucket[key], local)
-	}
-
-	for key, bucketPositions := range perBucket {
-		bucket := g.buckets[key]
-		before := bucket.Count()
-		bucket.BulkRemove(bucketPositions)
-		g.adjustCount(before, bucket.Count())
-	}
-}
-
-func (g *ZOrderBucketGrid[T]) BulkMove(moves []EntryMove[T]) {
-	for i := range moves {
-		move := moves[i]
-
-		srcKey, srcLocal := g.chunkKey(move.Old)
-		dstKey, dstLocal := g.chunkKey(move.New)
-
-		value := move.Value
-		srcBucket := g.buckets[srcKey]
-
-		if value == nil && srcBucket != nil {
-			if v, ok := srcBucket.Get(srcLocal.X, srcLocal.Y); ok {
-				value = v
-			}
-		}
-
-		if srcBucket != nil {
-			before := srcBucket.Count()
-			srcBucket.BulkRemove([]Pos{srcLocal})
-			g.adjustCount(before, srcBucket.Count())
-		}
-
-		if value == nil {
-			continue
-		}
-
-		if !g.inBounds(move.New) {
-			continue
-		}
-
-		dstBucket := g.ensureBucket(dstKey)
-		before := dstBucket.Count()
-		dstBucket.BulkInsert([]Entry[T]{{Pos: dstLocal, Value: value}})
-		g.adjustCount(before, dstBucket.Count())
-	}
-}
+//----------------------------------------------------------
 
 func (g *ZOrderBucketGrid[T]) Get(x, y uint32) (*T, bool) {
 	pos := Pos{X: x, Y: y}
@@ -215,6 +161,36 @@ func (g *ZOrderBucketGrid[T]) adjustCount(before, after uint64) {
 		return
 	}
 	g.count -= before - after
+}
+
+func (g *ZOrderBucketGrid[T]) processEntriesOneByOne(
+	entries []Entry[T],
+	keep func(Entry[T]) bool,
+	ensureBucket bool,
+	apply func(bucket *LinearQuadTree[T], local Entry[T]),
+) {
+	for _, e := range entries {
+		if !keep(e) {
+			continue
+		}
+
+		key, localPos := g.chunkKey(e.Pos)
+		local := Entry[T]{Pos: localPos, Value: e.Value}
+
+		var bucket *LinearQuadTree[T]
+		if ensureBucket {
+			bucket = g.ensureBucket(key)
+		} else {
+			bucket = g.buckets[key]
+			if bucket == nil {
+				continue
+			}
+		}
+
+		before := bucket.Count()
+		apply(bucket, local)
+		g.adjustCount(before, bucket.Count())
+	}
 }
 
 func (g *ZOrderBucketGrid[T]) inBounds(p Pos) bool {

@@ -41,7 +41,10 @@ func TestZOrderBucketGridRemove(t *testing.T) {
 	}
 	grid.BulkInsert(entries)
 
-	grid.BulkRemove([]Pos{{X: 1, Y: 1}, {X: 3, Y: 3}})
+	grid.BulkRemove([]Entry[string]{
+		{Pos: Pos{X: 1, Y: 1}},
+		{Pos: Pos{X: 3, Y: 3}},
+	})
 
 	checks := []struct {
 		pos      Pos
@@ -72,19 +75,21 @@ func TestZOrderBucketGridMove(t *testing.T) {
 	maxXY := Size1024.Resolution()
 	grid := NewZOrderBucketGrid[string](Size64, AABB{Min: Pos{0, 0}, Max: Pos{maxXY, maxXY}})
 
+	b := strPtr("b")
+	d := strPtr("d")
+
 	entries := []Entry[string]{
 		{Pos: Pos{X: 0, Y: 0}, Value: strPtr("a")},
-		{Pos: Pos{X: 1, Y: 1}, Value: strPtr("b")},
+		{Pos: Pos{X: 1, Y: 1}, Value: b},
 		{Pos: Pos{X: 2, Y: 2}, Value: strPtr("c")},
-		{Pos: Pos{X: 3, Y: 3}, Value: strPtr("d")},
+		{Pos: Pos{X: 3, Y: 3}, Value: d},
 	}
 	grid.BulkInsert(entries)
 
-	moves := []EntryMove[string]{
-		{Old: Pos{X: 1, Y: 1}, New: Pos{X: 4, Y: 1}, Value: strPtr("b2")},
-		{Old: Pos{X: 3, Y: 3}, New: Pos{X: 5, Y: 5}, Value: strPtr("d2")},
-	}
-	grid.BulkMove(moves)
+	updates := NewEntriesUpdate[string](2)
+	updates.Append(b, Pos{X: 1, Y: 1}, Pos{X: 4, Y: 1})
+	updates.Append(d, Pos{X: 3, Y: 3}, Pos{X: 5, Y: 5})
+	grid.BulkUpdate(updates)
 
 	checks := []struct {
 		pos      Pos
@@ -95,8 +100,8 @@ func TestZOrderBucketGridMove(t *testing.T) {
 		{pos: Pos{X: 1, Y: 1}, present: false},
 		{pos: Pos{X: 2, Y: 2}, present: true, expected: "c"},
 		{pos: Pos{X: 3, Y: 3}, present: false},
-		{pos: Pos{X: 4, Y: 1}, present: true, expected: "b2"},
-		{pos: Pos{X: 5, Y: 5}, present: true, expected: "d2"},
+		{pos: Pos{X: 4, Y: 1}, present: true, expected: "b"},
+		{pos: Pos{X: 5, Y: 5}, present: true, expected: "d"},
 	}
 
 	for _, c := range checks {
