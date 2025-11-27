@@ -115,14 +115,14 @@ func (qt *LinearQuadTree[T]) Bounds() AABB {
 	}
 }
 
-func (qt *LinearQuadTree[T]) QueryRange(aabb AABB) []*T {
+func (qt *LinearQuadTree[T]) QueryRange(aabb AABB, out []*T) []*T {
 	if qt.count == 0 {
-		return nil
+		return out
 	}
 
 	// Clamp AABB to tree bounds
 	if aabb.Min.X > qt.maxXY || aabb.Min.Y > qt.maxXY {
-		return nil
+		return out
 	}
 	if aabb.Max.X > qt.maxXY {
 		aabb.Max.X = qt.maxXY
@@ -131,8 +131,8 @@ func (qt *LinearQuadTree[T]) QueryRange(aabb AABB) []*T {
 		aabb.Max.Y = qt.maxXY
 	}
 
-	results := make([]*T, 0)
 	// Start: level 0, whole world [0..2^depth-1] x [0..2^depth-1], prefix=0
+	results := out
 	qt.queryNode(0, 0, 0, 0, aabb, &results)
 	return results
 }

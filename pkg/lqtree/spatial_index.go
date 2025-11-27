@@ -56,7 +56,7 @@ type SpatialIndex[T any] interface {
 	Get(x, y uint32) (*T, bool)
 
 	// QueryRange – all objects within the AABB.
-	QueryRange(aabb AABB) []*T
+	QueryRange(aabb AABB, out []*T) []*T
 
 	// Count – number of objects in the structure.
 	Count() uint64

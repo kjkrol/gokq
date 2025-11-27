@@ -136,10 +136,11 @@ func TestLinearQuadTreeQueryRange(t *testing.T) {
 
 	qt.BulkInsert(append(cluster, far...))
 
+	buf := make([]*string, 0)
 	results := qt.QueryRange(AABB{
 		Min: Pos{X: 2, Y: 2},
 		Max: Pos{X: 4, Y: 4},
-	})
+	}, buf)
 
 	found := make(map[string]bool)
 	for _, v := range results {

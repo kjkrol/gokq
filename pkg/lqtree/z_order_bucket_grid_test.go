@@ -139,10 +139,11 @@ func TestZOrderBucketGridQueryRange(t *testing.T) {
 
 	grid.BulkInsert(append(cluster, far...))
 
+	buf := make([]*string, 0)
 	results := grid.QueryRange(AABB{
 		Min: Pos{X: 2, Y: 2},
 		Max: Pos{X: 4, Y: 4},
-	})
+	}, buf)
 
 	found := make(map[string]bool)
 	for _, v := range results {
@@ -183,10 +184,11 @@ func TestZOrderBucketGridQueryRangeCrossChunk(t *testing.T) {
 
 	grid.BulkInsert(append(cluster, far...))
 
+	buf := make([]*string, 0)
 	results := grid.QueryRange(AABB{
 		Min: Pos{X: 3, Y: 3},
 		Max: Pos{X: 5, Y: 5},
-	})
+	}, buf)
 
 	found := make(map[string]bool)
 	for _, v := range results {

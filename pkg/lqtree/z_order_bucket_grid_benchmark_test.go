@@ -69,3 +69,42 @@ func benchmarkZOrderBucketGridBulkMove(b *testing.B, totalEntries, movingEntries
 func randCoord(r *rand.Rand, max uint32) uint32 {
 	return uint32(r.Intn(int(max + 1)))
 }
+
+func BenchmarkZOrderBucketGridQueryRange(b *testing.B) {
+	const totalEntries = 100000
+	const queryCount = 128
+	const querySize uint32 = 64
+
+	src := rand.New(rand.NewSource(2))
+
+	entries := make([]Entry[string], totalEntries)
+	for i := 0; i < totalEntries; i++ {
+		entries[i] = Entry[string]{
+			Pos:   Pos{X: randCoord(src, benchMaxXY), Y: randCoord(src, benchMaxXY)},
+			Value: strPtr(fmt.Sprintf("v%d", i)),
+		}
+	}
+
+	grid := NewZOrderBucketGrid[string](Size65536, AABB{
+		Min: Pos{0, 0},
+		Max: Pos{benchMaxXY, benchMaxXY},
+	})
+	grid.BulkInsert(entries)
+
+	queries := make([]AABB, queryCount)
+	for i := 0; i < queryCount; i++ {
+		minX := randCoord(src, benchMaxXY-querySize)
+		minY := randCoord(src, benchMaxXY-querySize)
+		queries[i] = AABB{
+			Min: Pos{X: minX, Y: minY},
+			Max: Pos{X: minX + querySize, Y: minY + querySize},
+		}
+	}
+
+	results := make([]*string, 0, 1024)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		q := queries[i%queryCount]
+		results = grid.QueryRange(q, results[:0])
+	}
+}

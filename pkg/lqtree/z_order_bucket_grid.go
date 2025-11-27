@@ -76,13 +76,13 @@ func (g *ZOrderBucketGrid[T]) Get(x, y uint32) (*T, bool) {
 	return bucket.Get(local.X, local.Y)
 }
 
-func (g *ZOrderBucketGrid[T]) QueryRange(aabb AABB) []*T {
+func (g *ZOrderBucketGrid[T]) QueryRange(aabb AABB, out []*T) []*T {
 	if len(g.buckets) == 0 {
-		return nil
+		return out[:0]
 	}
 
 	if !g.intersectsBound(aabb) {
-		return nil
+		return out[:0]
 	}
 
 	// clamp query to world bound
@@ -93,7 +93,7 @@ func (g *ZOrderBucketGrid[T]) QueryRange(aabb AABB) []*T {
 	minChunkY := aabb.Min.Y / g.bucketMaxXY
 	maxChunkY := aabb.Max.Y / g.bucketMaxXY
 
-	results := make([]*T, 0)
+	results := out[:0]
 
 	for cx := minChunkX; cx <= maxChunkX; cx++ {
 		for cy := minChunkY; cy <= maxChunkY; cy++ {
@@ -119,7 +119,7 @@ func (g *ZOrderBucketGrid[T]) QueryRange(aabb AABB) []*T {
 				Max: Pos{X: localMaxX - chunkMinX, Y: localMaxY - chunkMinY},
 			}
 
-			results = append(results, bucket.QueryRange(localAABB)...)
+			results = bucket.QueryRange(localAABB, results)
 		}
 	}
 
