@@ -7,25 +7,22 @@ import "github.com/kjkrol/gokq/pkg/pow2grid"
 // coordinates and providing point lookups, AABB range queries, and bulk
 // insert/move/remove operations.
 type LinearQuadTree[T any] struct {
-	cells []*T
-	maxXY uint32
-	depth uint8
-	count uint64
+	cells    []*T
+	maxCoord uint32
+	depth    pow2grid.Resolution
+	count    uint64
 }
 
 // Compile-time guard: ensures LinearQuadTree implements SpatialIndex.
 var _ pow2grid.Index[any] = (*LinearQuadTree[any])(nil)
 
 func NewLinearQuadTree[T any](resolution pow2grid.Resolution) *LinearQuadTree[T] {
-	maxCoord := resolution.Side()
-	depth := uint8(resolution)
 	cellCount := resolution.Cells()
-
 	return &LinearQuadTree[T]{
-		cells: make([]*T, cellCount),
-		maxXY: maxCoord,
-		depth: depth,
-		count: 0,
+		cells:    make([]*T, cellCount),
+		maxCoord: resolution.MaxCoord(),
+		depth:    resolution,
+		count:    0,
 	}
 }
 
@@ -60,30 +57,13 @@ func (qt *LinearQuadTree[T]) SignleBulkRemove(entry pow2grid.Entry[T]) {
 }
 
 func (qt *LinearQuadTree[T]) BulkMove(moves pow2grid.EntriesMove[T]) {
-	old := moves.Old
-	new := moves.New
-
-	for i := range old {
-		pos := old[i].Pos
-		if qt.inBounds(pos.X, pos.Y) {
-			code := pow2grid.NewMortonCode(pos.X, pos.Y)
-			qt.setCell(code, nil)
-		}
-	}
-
-	for i := range new {
-		pos := new[i].Pos
-		if !qt.inBounds(pos.X, pos.Y) || new[i].Value == nil {
-			continue
-		}
-		code := pow2grid.NewMortonCode(pos.X, pos.Y)
-		qt.setCell(code, new[i].Value)
-	}
+	qt.BulkRemove(moves.Old)
+	qt.BulkInsert(moves.New)
 }
 
 // Get – O(1)
 func (qt *LinearQuadTree[T]) Get(x, y uint32) (*T, bool) {
-	if x > qt.maxXY || y > qt.maxXY {
+	if x > qt.maxCoord || y > qt.maxCoord {
 		return nil, false
 	}
 	code := pow2grid.NewMortonCode(x, y)
@@ -101,140 +81,56 @@ func (qt *LinearQuadTree[T]) Count() uint64 {
 func (qt *LinearQuadTree[T]) Bounds() pow2grid.AABB {
 	return pow2grid.AABB{
 		Min: pow2grid.Pos{X: 0, Y: 0},
-		Max: pow2grid.Pos{X: qt.maxXY, Y: qt.maxXY},
+		Max: pow2grid.Pos{X: qt.maxCoord, Y: qt.maxCoord},
 	}
 }
 
-func (qt *LinearQuadTree[T]) QueryRange(aabb pow2grid.AABB, out []*T) []*T {
+func (qt *LinearQuadTree[T]) QueryRange(aabb pow2grid.AABB, out []*T) int {
+	if len(out) == 0 {
+		return 0
+	}
+
+	clear(out)
+
 	if qt.count == 0 {
-		return out
+		return 0
 	}
 
-	// Clamp AABB to tree bounds
-	if aabb.Min.X > qt.maxXY || aabb.Min.Y > qt.maxXY {
-		return out
-	}
-	if aabb.Max.X > qt.maxXY {
-		aabb.Max.X = qt.maxXY
-	}
-	if aabb.Max.Y > qt.maxXY {
-		aabb.Max.Y = qt.maxXY
+	if !qt.clampToBound(&aabb) {
+		return 0
 	}
 
-	// Start: level 0, whole world [0..2^depth-1] x [0..2^depth-1], prefix=0
-	results := out
-	qt.queryNode(0, 0, 0, 0, aabb, &results)
-	return results
-}
-
-// queryNode traverses a quadtree node:
-// level – how many levels below the root (0..depth)
-// prefix – shared MortonCode prefix for the subtree of this node
-// region: [x0..x1] x [y0..y1], size derived from (depth - level)
-func (qt *LinearQuadTree[T]) queryNode(
-	x0, y0 uint32,
-	level uint8,
-	prefix pow2grid.MortonCode,
-	aabb pow2grid.AABB,
-	out *[]*T,
-) {
-	// how many bits remain downward (subtree depth)
-	sizeBits := qt.depth - level
-	size := uint32(1) << sizeBits
-	x1 := x0 + size - 1
-	y1 := y0 + size - 1
-
-	// 1. No intersection with AABB → stop
-	if x1 < aabb.Min.X || x0 > aabb.Max.X ||
-		y1 < aabb.Min.Y || y0 > aabb.Max.Y {
-		return
-	}
-
-	// 2. Region fully inside AABB → scan the entire Morton range for this subtree.
-	if x0 >= aabb.Min.X && x1 <= aabb.Max.X &&
-		y0 >= aabb.Min.Y && y1 <= aabb.Max.Y {
-
-		remainBits := sizeBits                  // tyle poziomów poniżej
-		shift := remainBits * 2                 // 2 bity na poziom
-		start := prefix << shift                // wspólny prefiks
-		span := pow2grid.MortonCode(1) << shift // liczba kodów w poddrzewie
-		end := start + span - 1
-
-		for code := start; code <= end; code++ {
-			obj := qt.cells[int(code)]
-			if obj != nil {
-				*out = append(*out, obj)
-			}
+	limit := len(out)
+	written := 0
+	pow2grid.MortonCodeAreaConsume(aabb, func(idx int, code pow2grid.MortonCode) {
+		if written >= limit {
+			return
 		}
-		return
-	}
-
-	// 3. Leaf (1x1 cell) + partial overlap → check the single cell
-	if sizeBits == 0 {
-		code := prefix // pełny MortonCode
-		if x0 >= aabb.Min.X && x0 <= aabb.Max.X &&
-			y0 >= aabb.Min.Y && y0 <= aabb.Max.Y {
-
-			obj := qt.cells[int(code)]
-			if obj != nil {
-				*out = append(*out, obj)
-			}
+		if val := qt.cells[code]; val != nil {
+			out[written] = val
+			written++
 		}
-		return
-	}
+	})
 
-	// 4. Partial overlap, non-leaf → split into 4 quadrants
-	halfBits := sizeBits - 1
-	half := uint32(1) << halfBits
-
-	basePrefix := prefix << 2
-	nwPrefix := basePrefix     // (dx=0, dy=0)
-	nePrefix := basePrefix | 1 // (dx=1, dy=0)
-	swPrefix := basePrefix | 2 // (dx=0, dy=1)
-	sePrefix := basePrefix | 3 // (dx=1, dy=1)
-
-	nextLevel := level + 1
-
-	// NW
-	qt.queryNode(
-		x0,
-		y0,
-		nextLevel,
-		nwPrefix,
-		aabb,
-		out,
-	)
-	// NE
-	qt.queryNode(
-		x0+half,
-		y0,
-		nextLevel,
-		nePrefix,
-		aabb,
-		out,
-	)
-	// SW
-	qt.queryNode(
-		x0,
-		y0+half,
-		nextLevel,
-		swPrefix,
-		aabb,
-		out,
-	)
-	// SE
-	qt.queryNode(
-		x0+half,
-		y0+half,
-		nextLevel,
-		sePrefix,
-		aabb,
-		out,
-	)
+	return written
 }
 
 func (qt *LinearQuadTree[T]) inBounds(x, y uint32) bool {
-	return x <= qt.maxXY && y <= qt.maxXY
+	return x <= qt.maxCoord && y <= qt.maxCoord
+}
+
+func (qt *LinearQuadTree[T]) clampToBound(aabb *pow2grid.AABB) bool {
+	// Clamp AABB to tree bounds
+	if aabb.Min.X > qt.maxCoord || aabb.Min.Y > qt.maxCoord {
+		return false
+	}
+	if aabb.Max.X > qt.maxCoord {
+		aabb.Max.X = qt.maxCoord
+	}
+	if aabb.Max.Y > qt.maxCoord {
+		aabb.Max.Y = qt.maxCoord
+	}
+	return true
 }
 
 func (qt *LinearQuadTree[T]) setCell(code pow2grid.MortonCode, value *T) {

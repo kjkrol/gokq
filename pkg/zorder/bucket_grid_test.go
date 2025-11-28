@@ -167,14 +167,15 @@ func TestBucketGridQueryRange(t *testing.T) {
 
 	grid.BulkInsert(append(cluster, far...))
 
-	buf := make([]*string, 0)
-	results := grid.QueryRange(pow2grid.AABB{
+	buf := make([]*string, 16)
+	n := grid.QueryRange(pow2grid.AABB{
 		Min: pow2grid.Pos{X: 2, Y: 2},
 		Max: pow2grid.Pos{X: 4, Y: 4},
 	}, buf)
 
 	found := make(map[string]bool)
-	for _, v := range results {
+	for i := 0; i < n; i++ {
+		v := buf[i]
 		if v != nil {
 			found[*v] = true
 		}
@@ -218,14 +219,15 @@ func TestBucketGridQueryRangeCrossChunk(t *testing.T) {
 
 	grid.BulkInsert(append(cluster, far...))
 
-	buf := make([]*string, 0)
-	results := grid.QueryRange(pow2grid.AABB{
+	buf := make([]*string, 16)
+	n := grid.QueryRange(pow2grid.AABB{
 		Min: pow2grid.Pos{X: 3, Y: 3},
 		Max: pow2grid.Pos{X: 5, Y: 5},
 	}, buf)
 
 	found := make(map[string]bool)
-	for _, v := range results {
+	for i := 0; i < n; i++ {
+		v := buf[i]
 		if v != nil {
 			found[*v] = true
 		}

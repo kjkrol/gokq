@@ -1,5 +1,7 @@
 package pow2grid
 
+import "fmt"
+
 // -----------------------------------------
 // Enum where the name reflects total cell count (side length squared).
 // -----------------------------------------
@@ -33,4 +35,10 @@ func (s Resolution) MaxCoord() uint32 {
 // To jest 1 << (2*s).
 func (s Resolution) Cells() uint64 {
 	return uint64(1) << (s << 1)
+}
+
+// String returns a human-readable name like "1x1", "1024x1024".
+func (s Resolution) String() string {
+	side := s.Side()
+	return fmt.Sprintf("%dx%d", side, side)
 }

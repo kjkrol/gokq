@@ -59,7 +59,7 @@ type Index[T any] interface {
 	Get(x, y uint32) (*T, bool)
 
 	// QueryRange – all objects within the AABB.
-	QueryRange(aabb AABB, out []*T) []*T
+	QueryRange(aabb AABB, out []*T) int
 
 	// Count – number of objects in the structure.
 	Count() uint64

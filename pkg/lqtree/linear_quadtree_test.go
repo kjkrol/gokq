@@ -76,17 +76,20 @@ func TestLinearQuadTreeRemove(t *testing.T) {
 func TestLinearQuadTreeUpdateWithMove(t *testing.T) {
 	qt := NewLinearQuadTree[string](pow2grid.Size8x8)
 
+	b := strPtr("b")
+	d := strPtr("d")
+
 	entries := []pow2grid.Entry[string]{
 		{Pos: pow2grid.Pos{X: 0, Y: 0}, Value: strPtr("a")},
-		{Pos: pow2grid.Pos{X: 1, Y: 1}, Value: strPtr("b")},
+		{Pos: pow2grid.Pos{X: 1, Y: 1}, Value: b},
 		{Pos: pow2grid.Pos{X: 2, Y: 2}, Value: strPtr("c")},
-		{Pos: pow2grid.Pos{X: 3, Y: 3}, Value: strPtr("d")},
+		{Pos: pow2grid.Pos{X: 3, Y: 3}, Value: d},
 	}
 	qt.BulkInsert(entries)
 
 	updates := pow2grid.NewEntriesMove[string](2)
-	updates.Append(strPtr("b2"), pow2grid.Pos{X: 1, Y: 1}, pow2grid.Pos{X: 4, Y: 1})
-	updates.Append(strPtr("d2"), pow2grid.Pos{X: 3, Y: 3}, pow2grid.Pos{X: 4, Y: 4})
+	updates.Append(b, pow2grid.Pos{X: 1, Y: 1}, pow2grid.Pos{X: 4, Y: 1})
+	updates.Append(d, pow2grid.Pos{X: 3, Y: 3}, pow2grid.Pos{X: 4, Y: 4})
 	qt.BulkMove(updates)
 
 	checks := []struct {
@@ -98,8 +101,8 @@ func TestLinearQuadTreeUpdateWithMove(t *testing.T) {
 		{pos: pow2grid.Pos{X: 1, Y: 1}, present: false},
 		{pos: pow2grid.Pos{X: 2, Y: 2}, present: true, expected: "c"},
 		{pos: pow2grid.Pos{X: 3, Y: 3}, present: false},
-		{pos: pow2grid.Pos{X: 4, Y: 1}, present: true, expected: "b2"},
-		{pos: pow2grid.Pos{X: 4, Y: 4}, present: true, expected: "d2"},
+		{pos: pow2grid.Pos{X: 4, Y: 1}, present: true, expected: "b"},
+		{pos: pow2grid.Pos{X: 4, Y: 4}, present: true, expected: "d"},
 	}
 
 	for _, c := range checks {
@@ -138,14 +141,15 @@ func TestLinearQuadTreeQueryRange(t *testing.T) {
 
 	qt.BulkInsert(append(cluster, far...))
 
-	buf := make([]*string, 0)
-	results := qt.QueryRange(pow2grid.AABB{
+	buf := make([]*string, 16)
+	n := qt.QueryRange(pow2grid.AABB{
 		Min: pow2grid.Pos{X: 2, Y: 2},
 		Max: pow2grid.Pos{X: 4, Y: 4},
 	}, buf)
 
 	found := make(map[string]bool)
-	for _, v := range results {
+	for i := 0; i < n; i++ {
+		v := buf[i]
 		if v != nil {
 			found[*v] = true
 		}

@@ -12,11 +12,11 @@ type ChunkKey struct {
 // BucketGrid shards space into Z-order buckets (chunks) and stores points in per-bucket
 // linear quadtrees. It implements pow2grid.Index for Morton-friendly, power-of-two grids.
 type BucketGrid[T any] struct {
-	bucketMaxXY  uint32
-	bucketstSize pow2grid.Resolution
-	bound        pow2grid.AABB
-	buckets      map[ChunkKey]*lqtree.LinearQuadTree[T]
-	count        uint64
+	side              uint32
+	bucketsResolution pow2grid.Resolution
+	bound             pow2grid.AABB
+	buckets           map[ChunkKey]*lqtree.LinearQuadTree[T]
+	count             uint64
 }
 
 var _ pow2grid.Index[any] = (*BucketGrid[any])(nil)
@@ -28,12 +28,11 @@ func NewBucketGrid[T any](
 	bucketsResolution pow2grid.Resolution,
 	bound pow2grid.AABB,
 ) *BucketGrid[T] {
-	size := bucketsResolution.Side()
 	return &BucketGrid[T]{
-		bucketMaxXY:  size,
-		bucketstSize: bucketsResolution,
-		bound:        bound,
-		buckets:      make(map[ChunkKey]*lqtree.LinearQuadTree[T]),
+		side:              bucketsResolution.Side(),
+		bucketsResolution: bucketsResolution,
+		bound:             bound,
+		buckets:           make(map[ChunkKey]*lqtree.LinearQuadTree[T]),
 	}
 }
 
@@ -42,7 +41,7 @@ func (g *BucketGrid[T]) BulkInsert(entries []pow2grid.Entry[T]) {
 		entries,
 		func(e pow2grid.Entry[T]) bool { return e.Value != nil && g.inBounds(e.Pos) },
 		true,
-		func(bucket *lqtree.LinearQuadTree[T], locals pow2grid.Entry[T]) {
+		func(chunkKey ChunkKey, bucket *lqtree.LinearQuadTree[T], locals pow2grid.Entry[T]) {
 			bucket.SingleBulkInsert(locals)
 		},
 	)
@@ -53,8 +52,11 @@ func (g *BucketGrid[T]) BulkRemove(entries []pow2grid.Entry[T]) {
 		entries,
 		func(e pow2grid.Entry[T]) bool { return g.inBounds(e.Pos) },
 		false,
-		func(bucket *lqtree.LinearQuadTree[T], locals pow2grid.Entry[T]) {
+		func(chunkKey ChunkKey, bucket *lqtree.LinearQuadTree[T], locals pow2grid.Entry[T]) {
 			bucket.SignleBulkRemove(locals)
+			if bucket.Count() == 0 {
+				// delete(g.buckets, chunkKey)
+			}
 		},
 	)
 }
@@ -82,54 +84,72 @@ func (g *BucketGrid[T]) Get(x, y uint32) (*T, bool) {
 	return bucket.Get(local.X, local.Y)
 }
 
-func (g *BucketGrid[T]) QueryRange(aabb pow2grid.AABB, out []*T) []*T {
+func (g *BucketGrid[T]) QueryRange(aabb pow2grid.AABB, out []*T) int {
+	if len(out) == 0 {
+		return 0
+	}
+	clear(out)
+
 	if len(g.buckets) == 0 {
-		return out[:0]
+		return 0
 	}
 
 	if !g.intersectsBound(aabb) {
-		return out[:0]
+		return 0
 	}
 
 	// clamp query to world bound
 	aabb = g.clampToBound(aabb)
 
-	minChunkX := aabb.Min.X / g.bucketMaxXY
-	maxChunkX := aabb.Max.X / g.bucketMaxXY
-	minChunkY := aabb.Min.Y / g.bucketMaxXY
-	maxChunkY := aabb.Max.Y / g.bucketMaxXY
+	minChunkX := aabb.Min.X / g.side
+	maxChunkX := aabb.Max.X / g.side
+	minChunkY := aabb.Min.Y / g.side
+	maxChunkY := aabb.Max.Y / g.side
 
-	results := out[:0]
+	outCounter := 0
+	localAABB := pow2grid.AABB{Min: pow2grid.Pos{X: 0, Y: 0}, Max: pow2grid.Pos{X: 0, Y: 0}}
 
 	for cx := minChunkX; cx <= maxChunkX; cx++ {
 		for cy := minChunkY; cy <= maxChunkY; cy++ {
-			key := ChunkKey{X: cx, Y: cy}
-			bucket := g.buckets[key]
+			chunkKey := ChunkKey{X: cx, Y: cy}
+
+			bucket := g.buckets[chunkKey]
 			if bucket == nil {
 				continue
 			}
 
-			chunkMinX := cx * g.bucketMaxXY
-			chunkMinY := cy * g.bucketMaxXY
-			chunkMaxX := chunkMinX + g.bucketMaxXY - 1
-			chunkMaxY := chunkMinY + g.bucketMaxXY - 1
-
-			localMinX := max(aabb.Min.X, chunkMinX)
-			localMinY := max(aabb.Min.Y, chunkMinY)
-
-			localMaxX := min(aabb.Max.X, chunkMaxX)
-			localMaxY := min(aabb.Max.Y, chunkMaxY)
-
-			localAABB := pow2grid.AABB{
-				Min: pow2grid.Pos{X: localMinX - chunkMinX, Y: localMinY - chunkMinY},
-				Max: pow2grid.Pos{X: localMaxX - chunkMinX, Y: localMaxY - chunkMinY},
+			view := out[outCounter:]
+			if len(view) == 0 {
+				return outCounter
 			}
 
-			results = bucket.QueryRange(localAABB, results)
+			g.configureChunkAABB(chunkKey, aabb, &localAABB)
+
+			written := bucket.QueryRange(localAABB, view)
+
+			outCounter += written
+			if outCounter >= len(out) {
+				return outCounter
+			}
 		}
 	}
+	return outCounter
+}
 
-	return results
+func (g *BucketGrid[T]) configureChunkAABB(chunkKey ChunkKey, oryginal pow2grid.AABB, chunkAABB *pow2grid.AABB) {
+	chunkMinX := chunkKey.X * g.side
+	chunkMinY := chunkKey.Y * g.side
+	chunkMaxX := chunkMinX + g.side - 1
+	chunkMaxY := chunkMinY + g.side - 1
+
+	localMinX := max(oryginal.Min.X, chunkMinX)
+	localMinY := max(oryginal.Min.Y, chunkMinY)
+
+	localMaxX := min(oryginal.Max.X, chunkMaxX)
+	localMaxY := min(oryginal.Max.Y, chunkMaxY)
+
+	chunkAABB.Min = pow2grid.Pos{X: localMinX - chunkMinX, Y: localMinY - chunkMinY}
+	chunkAABB.Max = pow2grid.Pos{X: localMaxX - chunkMinX, Y: localMaxY - chunkMinY}
 }
 
 func (g *BucketGrid[T]) Count() uint64 {
@@ -144,18 +164,18 @@ func (g *BucketGrid[T]) ensureBucket(key ChunkKey) *lqtree.LinearQuadTree[T] {
 	if bucket := g.buckets[key]; bucket != nil {
 		return bucket
 	}
-	bucket := lqtree.NewLinearQuadTree[T](g.bucketstSize)
+	bucket := lqtree.NewLinearQuadTree[T](g.bucketsResolution)
 	g.buckets[key] = bucket
 	return bucket
 }
 
 func (g *BucketGrid[T]) chunkKey(pos pow2grid.Pos) (ChunkKey, pow2grid.Pos) {
-	cx := pos.X / g.bucketMaxXY
-	cy := pos.Y / g.bucketMaxXY
+	cx := pos.X / g.side
+	cy := pos.Y / g.side
 
 	local := pow2grid.Pos{
-		X: pos.X - cx*g.bucketMaxXY,
-		Y: pos.Y - cy*g.bucketMaxXY,
+		X: pos.X - cx*g.side,
+		Y: pos.Y - cy*g.side,
 	}
 
 	return ChunkKey{X: cx, Y: cy}, local
@@ -173,28 +193,28 @@ func (g *BucketGrid[T]) processEntriesOneByOne(
 	entries []pow2grid.Entry[T],
 	keep func(pow2grid.Entry[T]) bool,
 	ensureBucket bool,
-	apply func(bucket *lqtree.LinearQuadTree[T], local pow2grid.Entry[T]),
+	apply func(ChunkKey, *lqtree.LinearQuadTree[T], pow2grid.Entry[T]),
 ) {
 	for _, e := range entries {
 		if !keep(e) {
 			continue
 		}
 
-		key, localPos := g.chunkKey(e.Pos)
+		chunkKey, localPos := g.chunkKey(e.Pos)
 		local := pow2grid.Entry[T]{Pos: localPos, Value: e.Value}
 
 		var bucket *lqtree.LinearQuadTree[T]
 		if ensureBucket {
-			bucket = g.ensureBucket(key)
+			bucket = g.ensureBucket(chunkKey)
 		} else {
-			bucket = g.buckets[key]
+			bucket = g.buckets[chunkKey]
 			if bucket == nil {
 				continue
 			}
 		}
 
 		before := bucket.Count()
-		apply(bucket, local)
+		apply(chunkKey, bucket, local)
 		g.adjustCount(before, bucket.Count())
 	}
 }
