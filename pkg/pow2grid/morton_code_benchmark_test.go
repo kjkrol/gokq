@@ -1,4 +1,4 @@
-package lqtree
+package pow2grid
 
 import "testing"
 

@@ -1,4 +1,4 @@
-package lqtree
+package pow2grid
 
 type Pos struct {
 	X, Y uint32
@@ -42,7 +42,10 @@ type AABB struct {
 	Max Pos
 }
 
-type SpatialIndex[T any] interface {
+// Index is a discrete spatial index over a 2D power-of-two grid.
+// It stores objects at integer coordinates and supports point lookups,
+// range queries (AABB) and bulk operations (insert, remove, move).
+type Index[T any] interface {
 	// BulkInsert – insert many objects at once.
 	BulkInsert(entries []Entry[T])
 

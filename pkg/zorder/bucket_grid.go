@@ -1,57 +1,65 @@
-package lqtree
+package zorder
+
+import (
+	"github.com/kjkrol/gokq/pkg/lqtree"
+	"github.com/kjkrol/gokq/pkg/pow2grid"
+)
 
 type ChunkKey struct {
 	X, Y uint32
 }
 
-type ZOrderBucketGrid[T any] struct {
+// BucketGrid shards space into Z-order buckets (chunks) and stores points in per-bucket
+// linear quadtrees. It implements pow2grid.Index for Morton-friendly, power-of-two grids.
+type BucketGrid[T any] struct {
 	bucketMaxXY  uint32
-	bucketstSize LQTSize
-	bound        AABB
-	buckets      map[ChunkKey]*LinearQuadTree[T]
+	bucketstSize pow2grid.Resolution
+	bound        pow2grid.AABB
+	buckets      map[ChunkKey]*lqtree.LinearQuadTree[T]
 	count        uint64
 }
 
-var _ SpatialIndex[any] = (*ZOrderBucketGrid[any])(nil)
+var _ pow2grid.Index[any] = (*BucketGrid[any])(nil)
 
 // Choose bucketstSize (and thus bucketMaxXY) to roughly match typical query AABB.
 // Example: if most queries are <32x32, a 64–128 bucket keeps them in 1–4 buckets with moderate memory;
 // QueryRange that spans many buckets will pay for many map lookups + per-bucket scans.
-func NewZOrderBucketGrid[T any](bucketstSize LQTSize, bound AABB) *ZOrderBucketGrid[T] {
-	size := bucketstSize.Resolution() + 1
-	return &ZOrderBucketGrid[T]{
+func NewBucketGrid[T any](
+	bucketsResolution pow2grid.Resolution,
+	bound pow2grid.AABB,
+) *BucketGrid[T] {
+	size := bucketsResolution.Side()
+	return &BucketGrid[T]{
 		bucketMaxXY:  size,
-		bucketstSize: bucketstSize,
+		bucketstSize: bucketsResolution,
 		bound:        bound,
-		buckets:      make(map[ChunkKey]*LinearQuadTree[T]),
+		buckets:      make(map[ChunkKey]*lqtree.LinearQuadTree[T]),
 	}
 }
 
-func (g *ZOrderBucketGrid[T]) BulkInsert(entries []Entry[T]) {
+func (g *BucketGrid[T]) BulkInsert(entries []pow2grid.Entry[T]) {
 	g.processEntriesOneByOne(
 		entries,
-		func(e Entry[T]) bool { return e.Value != nil && g.inBounds(e.Pos) },
+		func(e pow2grid.Entry[T]) bool { return e.Value != nil && g.inBounds(e.Pos) },
 		true,
-		func(bucket *LinearQuadTree[T], locals Entry[T]) {
-			bucket.singleBulkInsert(locals)
+		func(bucket *lqtree.LinearQuadTree[T], locals pow2grid.Entry[T]) {
+			bucket.SingleBulkInsert(locals)
 		},
 	)
 }
 
-func (g *ZOrderBucketGrid[T]) BulkRemove(entries []Entry[T]) {
+func (g *BucketGrid[T]) BulkRemove(entries []pow2grid.Entry[T]) {
 	g.processEntriesOneByOne(
 		entries,
-		func(e Entry[T]) bool { return g.inBounds(e.Pos) },
+		func(e pow2grid.Entry[T]) bool { return g.inBounds(e.Pos) },
 		false,
-		func(bucket *LinearQuadTree[T], locals Entry[T]) {
-			bucket.signleBulkRemove(locals)
+		func(bucket *lqtree.LinearQuadTree[T], locals pow2grid.Entry[T]) {
+			bucket.SignleBulkRemove(locals)
 		},
 	)
 }
 
-//----------------------------------------------------------
-
-func (g *ZOrderBucketGrid[T]) BulkMove(moves EntriesMove[T]) {
+func (g *BucketGrid[T]) BulkMove(moves pow2grid.EntriesMove[T]) {
 	if len(moves.Old) == 0 && len(moves.New) == 0 {
 		return
 	}
@@ -60,10 +68,8 @@ func (g *ZOrderBucketGrid[T]) BulkMove(moves EntriesMove[T]) {
 	g.BulkInsert(moves.New)
 }
 
-//----------------------------------------------------------
-
-func (g *ZOrderBucketGrid[T]) Get(x, y uint32) (*T, bool) {
-	pos := Pos{X: x, Y: y}
+func (g *BucketGrid[T]) Get(x, y uint32) (*T, bool) {
+	pos := pow2grid.Pos{X: x, Y: y}
 	if !g.inBounds(pos) {
 		return nil, false
 	}
@@ -76,7 +82,7 @@ func (g *ZOrderBucketGrid[T]) Get(x, y uint32) (*T, bool) {
 	return bucket.Get(local.X, local.Y)
 }
 
-func (g *ZOrderBucketGrid[T]) QueryRange(aabb AABB, out []*T) []*T {
+func (g *BucketGrid[T]) QueryRange(aabb pow2grid.AABB, out []*T) []*T {
 	if len(g.buckets) == 0 {
 		return out[:0]
 	}
@@ -114,9 +120,9 @@ func (g *ZOrderBucketGrid[T]) QueryRange(aabb AABB, out []*T) []*T {
 			localMaxX := min(aabb.Max.X, chunkMaxX)
 			localMaxY := min(aabb.Max.Y, chunkMaxY)
 
-			localAABB := AABB{
-				Min: Pos{X: localMinX - chunkMinX, Y: localMinY - chunkMinY},
-				Max: Pos{X: localMaxX - chunkMinX, Y: localMaxY - chunkMinY},
+			localAABB := pow2grid.AABB{
+				Min: pow2grid.Pos{X: localMinX - chunkMinX, Y: localMinY - chunkMinY},
+				Max: pow2grid.Pos{X: localMaxX - chunkMinX, Y: localMaxY - chunkMinY},
 			}
 
 			results = bucket.QueryRange(localAABB, results)
@@ -126,28 +132,28 @@ func (g *ZOrderBucketGrid[T]) QueryRange(aabb AABB, out []*T) []*T {
 	return results
 }
 
-func (g *ZOrderBucketGrid[T]) Count() uint64 {
+func (g *BucketGrid[T]) Count() uint64 {
 	return g.count
 }
 
-func (g *ZOrderBucketGrid[T]) Bounds() AABB {
+func (g *BucketGrid[T]) Bounds() pow2grid.AABB {
 	return g.bound
 }
 
-func (g *ZOrderBucketGrid[T]) ensureBucket(key ChunkKey) *LinearQuadTree[T] {
+func (g *BucketGrid[T]) ensureBucket(key ChunkKey) *lqtree.LinearQuadTree[T] {
 	if bucket := g.buckets[key]; bucket != nil {
 		return bucket
 	}
-	bucket := NewLinearQuadTree[T](g.bucketstSize)
+	bucket := lqtree.NewLinearQuadTree[T](g.bucketstSize)
 	g.buckets[key] = bucket
 	return bucket
 }
 
-func (g *ZOrderBucketGrid[T]) chunkKey(pos Pos) (ChunkKey, Pos) {
+func (g *BucketGrid[T]) chunkKey(pos pow2grid.Pos) (ChunkKey, pow2grid.Pos) {
 	cx := pos.X / g.bucketMaxXY
 	cy := pos.Y / g.bucketMaxXY
 
-	local := Pos{
+	local := pow2grid.Pos{
 		X: pos.X - cx*g.bucketMaxXY,
 		Y: pos.Y - cy*g.bucketMaxXY,
 	}
@@ -155,7 +161,7 @@ func (g *ZOrderBucketGrid[T]) chunkKey(pos Pos) (ChunkKey, Pos) {
 	return ChunkKey{X: cx, Y: cy}, local
 }
 
-func (g *ZOrderBucketGrid[T]) adjustCount(before, after uint64) {
+func (g *BucketGrid[T]) adjustCount(before, after uint64) {
 	if after > before {
 		g.count += after - before
 		return
@@ -163,11 +169,11 @@ func (g *ZOrderBucketGrid[T]) adjustCount(before, after uint64) {
 	g.count -= before - after
 }
 
-func (g *ZOrderBucketGrid[T]) processEntriesOneByOne(
-	entries []Entry[T],
-	keep func(Entry[T]) bool,
+func (g *BucketGrid[T]) processEntriesOneByOne(
+	entries []pow2grid.Entry[T],
+	keep func(pow2grid.Entry[T]) bool,
 	ensureBucket bool,
-	apply func(bucket *LinearQuadTree[T], local Entry[T]),
+	apply func(bucket *lqtree.LinearQuadTree[T], local pow2grid.Entry[T]),
 ) {
 	for _, e := range entries {
 		if !keep(e) {
@@ -175,9 +181,9 @@ func (g *ZOrderBucketGrid[T]) processEntriesOneByOne(
 		}
 
 		key, localPos := g.chunkKey(e.Pos)
-		local := Entry[T]{Pos: localPos, Value: e.Value}
+		local := pow2grid.Entry[T]{Pos: localPos, Value: e.Value}
 
-		var bucket *LinearQuadTree[T]
+		var bucket *lqtree.LinearQuadTree[T]
 		if ensureBucket {
 			bucket = g.ensureBucket(key)
 		} else {
@@ -193,12 +199,12 @@ func (g *ZOrderBucketGrid[T]) processEntriesOneByOne(
 	}
 }
 
-func (g *ZOrderBucketGrid[T]) inBounds(p Pos) bool {
+func (g *BucketGrid[T]) inBounds(p pow2grid.Pos) bool {
 	return p.X >= g.bound.Min.X && p.X <= g.bound.Max.X &&
 		p.Y >= g.bound.Min.Y && p.Y <= g.bound.Max.Y
 }
 
-func (g *ZOrderBucketGrid[T]) clampToBound(aabb AABB) AABB {
+func (g *BucketGrid[T]) clampToBound(aabb pow2grid.AABB) pow2grid.AABB {
 	if aabb.Min.X < g.bound.Min.X {
 		aabb.Min.X = g.bound.Min.X
 	}
@@ -214,7 +220,7 @@ func (g *ZOrderBucketGrid[T]) clampToBound(aabb AABB) AABB {
 	return aabb
 }
 
-func (g *ZOrderBucketGrid[T]) intersectsBound(aabb AABB) bool {
+func (g *BucketGrid[T]) intersectsBound(aabb pow2grid.AABB) bool {
 	return !(aabb.Max.X < g.bound.Min.X || aabb.Min.X > g.bound.Max.X ||
 		aabb.Max.Y < g.bound.Min.Y || aabb.Min.Y > g.bound.Max.Y)
 }
