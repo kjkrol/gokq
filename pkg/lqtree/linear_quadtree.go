@@ -2,147 +2,223 @@ package lqtree
 
 import "github.com/kjkrol/gokq/pkg/pow2grid"
 
-// LinearQuadTree is a linear (array-backed) quadtree over a 2D power-of-two
-// grid. It implements pow2grid.Index[T] by storing objects at integer
-// coordinates and providing point lookups, AABB range queries, and bulk
-// insert/move/remove operations.
-type LinearQuadTree[T any] struct {
-	cells    []*T
-	maxCoord uint32
-	depth    pow2grid.Resolution
-	count    uint64
+type Node[T any] struct {
+	Code  pow2grid.MortonCode // prefiks (2*Level bitów)
+	Level uint8
+	Count int
+	Items []*T // dla tego szkicu: tylko liście (Level == MaxLevel) trzymają wartości
 }
 
-// Compile-time guard: ensures LinearQuadTree implements SpatialIndex.
-var _ pow2grid.Index[any] = (*LinearQuadTree[any])(nil)
+type Tree[T any] struct {
+	MaxLevel uint8
+	nodes    map[uint8]map[pow2grid.MortonCode]*Node[T] // level -> (prefix -> node)
+}
 
-func NewLinearQuadTree[T any](resolution pow2grid.Resolution) *LinearQuadTree[T] {
-	cellCount := resolution.Cells()
-	return &LinearQuadTree[T]{
-		cells:    make([]*T, cellCount),
-		maxCoord: resolution.MaxCoord(),
-		depth:    resolution,
-		count:    0,
+func NewTree[T any](maxLevel uint8) *Tree[T] {
+	return &Tree[T]{
+		MaxLevel: maxLevel,
+		nodes:    make(map[uint8]map[pow2grid.MortonCode]*Node[T]),
 	}
 }
 
-func (qt *LinearQuadTree[T]) BulkInsert(entries []pow2grid.Entry[T]) {
-	for _, entry := range entries {
-		qt.SingleBulkInsert(entry)
-	}
+func NodePrefixFromFull(full pow2grid.MortonCode, level, maxLevel uint8) pow2grid.MortonCode {
+	shift := 2 * (maxLevel - level)
+	return pow2grid.MortonCode(uint64(full) >> shift)
 }
 
-func (qt *LinearQuadTree[T]) SingleBulkInsert(entry pow2grid.Entry[T]) {
-	if !qt.inBounds(entry.X, entry.Y) || entry.Value == nil {
-		return
-	}
-	qt.setCell(pow2grid.NewMortonCode(entry.X, entry.Y), entry.Value)
+func ChildPrefix(parent pow2grid.MortonCode, childID uint8) pow2grid.MortonCode {
+	return pow2grid.MortonCode((uint64(parent) << 2) | uint64(childID&0b11))
 }
 
-func (qt *LinearQuadTree[T]) BulkRemove(entities []pow2grid.Entry[T]) {
-	for _, entry := range entities {
-		qt.SignleBulkRemove(entry)
-	}
-}
+func NodeAABB(prefix pow2grid.MortonCode, level, maxLevel uint8) pow2grid.AABB {
+	x, y := prefix.Decode() // x,y ∈ [0, 2^level)
 
-func (qt *LinearQuadTree[T]) SignleBulkRemove(entry pow2grid.Entry[T]) {
-	pos := entry.Pos
-	if !qt.inBounds(pos.X, pos.Y) {
-		return
-	}
-	code := pow2grid.NewMortonCode(pos.X, pos.Y)
-	if entry.Value == nil || qt.cells[code] == entry.Value {
-		qt.setCell(code, nil)
-	}
-}
+	scale := uint32(1) << (maxLevel - level)
 
-func (qt *LinearQuadTree[T]) BulkMove(moves pow2grid.EntriesMove[T]) {
-	qt.BulkRemove(moves.Old)
-	qt.BulkInsert(moves.New)
-}
+	minX := x * scale
+	minY := y * scale
+	maxX := (x+1)*scale - 1
+	maxY := (y+1)*scale - 1
 
-// Get – O(1)
-func (qt *LinearQuadTree[T]) Get(x, y uint32) (*T, bool) {
-	if x > qt.maxCoord || y > qt.maxCoord {
-		return nil, false
-	}
-	code := pow2grid.NewMortonCode(x, y)
-	val := qt.cells[code]
-	if val == nil {
-		return nil, false
-	}
-	return val, true
-}
-
-func (qt *LinearQuadTree[T]) Count() uint64 {
-	return qt.count
-}
-
-func (qt *LinearQuadTree[T]) Bounds() pow2grid.AABB {
 	return pow2grid.AABB{
-		Min: pow2grid.Pos{X: 0, Y: 0},
-		Max: pow2grid.Pos{X: qt.maxCoord, Y: qt.maxCoord},
+		Min: pow2grid.Pos{X: minX, Y: minY},
+		Max: pow2grid.Pos{X: maxX, Y: maxY},
 	}
 }
 
-func (qt *LinearQuadTree[T]) QueryRange(aabb pow2grid.AABB, out []*T) int {
+// --- helpers na mapach ---
+
+func (t *Tree[T]) getNode(level uint8, code pow2grid.MortonCode) *Node[T] {
+	m := t.nodes[level]
+	if m == nil {
+		return nil
+	}
+	return m[code]
+}
+
+func (t *Tree[T]) getOrCreateNode(level uint8, code pow2grid.MortonCode) *Node[T] {
+	m := t.nodes[level]
+	if m == nil {
+		m = make(map[pow2grid.MortonCode]*Node[T])
+		t.nodes[level] = m
+	}
+	n := m[code]
+	if n == nil {
+		n = &Node[T]{
+			Code:  code,
+			Level: level,
+		}
+		m[code] = n
+	}
+	return n
+}
+
+// --- pojedyncze operacje na punktach (x,y) ---
+
+// insertPoint wstawia *T pod pos.
+// Zwraca true, jeśli to NOWY wpis (zwiększa Count), false jeśli nadpisaliśmy istniejący.
+func (t *Tree[T]) insertPoint(pos pow2grid.Pos, value *T) bool {
+	full := pow2grid.NewMortonCode(pos.X, pos.Y)
+	leafLevel := t.MaxLevel
+	leafPrefix := NodePrefixFromFull(full, leafLevel, t.MaxLevel)
+
+	leaf := t.getNode(leafLevel, leafPrefix)
+	if leaf != nil && len(leaf.Items) > 0 {
+		// w tym szkicu: jedno value na liść – nadpisujemy bez zmiany Count
+		leaf.Items[0] = value
+		return false
+	}
+
+	// nowy wpis – dodajemy ścieżkę od korzenia do liścia,
+	// przy każdym węźle zwiększając Count
+	for level := uint8(0); level <= t.MaxLevel; level++ {
+		prefix := NodePrefixFromFull(full, level, t.MaxLevel)
+		n := t.getOrCreateNode(level, prefix)
+		n.Count++
+		if level == t.MaxLevel {
+			n.Items = []*T{value}
+		}
+	}
+
+	return true
+}
+
+// removePoint usuwa wpis pod pos, jeżeli istnieje.
+// Zwraca usuniętą wartość i bool, czy coś faktycznie usunięto.
+func (t *Tree[T]) removePoint(pos pow2grid.Pos) (*T, bool) {
+	full := pow2grid.NewMortonCode(pos.X, pos.Y)
+	leafLevel := t.MaxLevel
+	leafPrefix := NodePrefixFromFull(full, leafLevel, t.MaxLevel)
+
+	leaf := t.getNode(leafLevel, leafPrefix)
+	if leaf == nil || len(leaf.Items) == 0 {
+		return nil, false
+	}
+
+	removed := leaf.Items[0]
+	leaf.Items = leaf.Items[:0]
+
+	// schodzimy z liścia do korzenia, dekrementując Count
+	for level := leafLevel; ; level-- {
+		prefix := NodePrefixFromFull(full, level, t.MaxLevel)
+		m := t.nodes[level]
+		if m == nil {
+			break
+		}
+		n := m[prefix]
+		if n == nil {
+			break
+		}
+		n.Count--
+		if n.Count <= 0 {
+			delete(m, prefix)
+			if len(m) == 0 {
+				delete(t.nodes, level)
+			}
+		}
+		if level == 0 {
+			break
+		}
+	}
+
+	return removed, true
+}
+
+// getPoint – pojedynczy lookup.
+func (t *Tree[T]) getPoint(pos pow2grid.Pos) (*T, bool) {
+	full := pow2grid.NewMortonCode(pos.X, pos.Y)
+	leafPrefix := NodePrefixFromFull(full, t.MaxLevel, t.MaxLevel)
+	leaf := t.getNode(t.MaxLevel, leafPrefix)
+	if leaf == nil || len(leaf.Items) == 0 {
+		return nil, false
+	}
+	return leaf.Items[0], true
+}
+
+// --- QueryRange na drzewie ---
+
+func intersects(a, b pow2grid.AABB) bool {
+	return a.Min.X <= b.Max.X && a.Max.X >= b.Min.X &&
+		a.Min.Y <= b.Max.Y && a.Max.Y >= b.Min.Y
+}
+
+func (t *Tree[T]) QueryRange(aabb pow2grid.AABB, out []*T) int {
 	if len(out) == 0 {
 		return 0
 	}
 
-	clear(out)
-
-	if qt.count == 0 {
+	// zaczynamy od korzenia
+	level0 := uint8(0)
+	m := t.nodes[level0]
+	if m == nil {
+		return 0
+	}
+	root, ok := m[0]
+	if !ok {
 		return 0
 	}
 
-	if !qt.clampToBound(&aabb) {
+	return t.queryNode(root, aabb, out)
+}
+
+func (t *Tree[T]) queryNode(node *Node[T], aabb pow2grid.AABB, out []*T) int {
+	nodeBox := NodeAABB(node.Code, node.Level, t.MaxLevel)
+	if !intersects(nodeBox, aabb) {
 		return 0
 	}
 
-	limit := len(out)
-	written := 0
-	pow2grid.MortonCodeAreaConsume(aabb, func(idx int, code pow2grid.MortonCode) {
-		if written >= limit {
-			return
-		}
-		if val := qt.cells[code]; val != nil {
-			out[written] = val
+	// liść (poziom MaxLevel) – z jego AABB wynika, że kratka leży w zakresie
+	if node.Level == t.MaxLevel {
+		written := 0
+		for _, v := range node.Items {
+			if v == nil {
+				continue
+			}
+			if written >= len(out) {
+				break
+			}
+			out[written] = v
 			written++
 		}
-	})
+		return written
+	}
 
+	// węzeł wewnętrzny – schodzimy do dzieci
+	childLevel := node.Level + 1
+	m := t.nodes[childLevel]
+	if m == nil {
+		return 0
+	}
+
+	written := 0
+	for childID := uint8(0); childID < 4 && written < len(out); childID++ {
+		childCode := ChildPrefix(node.Code, childID)
+		childNode, ok := m[childCode]
+		if !ok || childNode.Count == 0 {
+			continue
+		}
+		w := t.queryNode(childNode, aabb, out[written:])
+		written += w
+	}
 	return written
-}
-
-func (qt *LinearQuadTree[T]) inBounds(x, y uint32) bool {
-	return x <= qt.maxCoord && y <= qt.maxCoord
-}
-
-func (qt *LinearQuadTree[T]) clampToBound(aabb *pow2grid.AABB) bool {
-	// Clamp AABB to tree bounds
-	if aabb.Min.X > qt.maxCoord || aabb.Min.Y > qt.maxCoord {
-		return false
-	}
-	if aabb.Max.X > qt.maxCoord {
-		aabb.Max.X = qt.maxCoord
-	}
-	if aabb.Max.Y > qt.maxCoord {
-		aabb.Max.Y = qt.maxCoord
-	}
-	return true
-}
-
-func (qt *LinearQuadTree[T]) setCell(code pow2grid.MortonCode, value *T) {
-	idx := int(code)
-	prev := qt.cells[idx]
-
-	switch {
-	case prev == nil && value != nil:
-		qt.count++
-	case prev != nil && value == nil:
-		qt.count--
-	}
-
-	qt.cells[idx] = value
 }

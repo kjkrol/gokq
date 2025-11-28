@@ -121,6 +121,22 @@ func (c MortonCode) IncY() MortonCode {
 }
 
 // splitBy1 spreads the lower 32 bits of input so that there is 1 zero bit between each bit.
+//
+// We label the 32 wejściowe bity jako
+// vutsrqponmlkjihgfedcba9876543210  (v = bit 31, 0 = bit 0)
+//
+// x = --------------------------------vutsrqponmlkjihgfedcba9876543210 : Bits initially
+// x = ----------------vutsrqponmlkjihg----------------fedcba9876543210 : After (1)
+// x = --------vutsrqpo--------nmlkjihg--------fedcba98--------76543210 : After (2)
+// x = ----vuts----rqpo----nmlk----jihg----fedc----ba98----7654----3210 : After (3)
+// x = --vu--ts--rq--po--nm--lk--ji--hg--fe--dc--ba--98--76--54--32--10 : After (4)
+// x = -v-u-t-s-r-q-p-o-n-m-l-k-j-i-h-g-f-e-d-c-b-a-9-8-7-6-5-4-3-2-1-0 : After (5)
+//
+// (1) x = (x | (x << 16)) & 0x0000FFFF0000FFFF
+// (2) x = (x | (x <<  8)) & 0x00FF00FF00FF00FF
+// (3) x = (x | (x <<  4)) & 0x0F0F0F0F0F0F0F0F
+// (4) x = (x | (x <<  2)) & 0x3333333333333333
+// (5) x = (x | (x <<  1)) & 0x5555555555555555
 func splitBy1(a uint32) uint64 {
 	x := uint64(a)
 	x = (x | (x << 16)) & 0x0000FFFF0000FFFF

@@ -1,4 +1,4 @@
-package zorder
+package bucketgrid
 
 import (
 	"fmt"

@@ -1,7 +1,7 @@
-package zorder
+package bucketgrid
 
 import (
-	"github.com/kjkrol/gokq/pkg/lqtree"
+	"github.com/kjkrol/gokq/pkg/grid"
 	"github.com/kjkrol/gokq/pkg/pow2grid"
 )
 
@@ -15,7 +15,7 @@ type BucketGrid[T any] struct {
 	side              uint32
 	bucketsResolution pow2grid.Resolution
 	bound             pow2grid.AABB
-	buckets           map[ChunkKey]*lqtree.LinearQuadTree[T]
+	buckets           map[ChunkKey]*grid.Grid[T]
 	count             uint64
 }
 
@@ -32,7 +32,7 @@ func NewBucketGrid[T any](
 		side:              bucketsResolution.Side(),
 		bucketsResolution: bucketsResolution,
 		bound:             bound,
-		buckets:           make(map[ChunkKey]*lqtree.LinearQuadTree[T]),
+		buckets:           make(map[ChunkKey]*grid.Grid[T]),
 	}
 }
 
@@ -41,7 +41,7 @@ func (g *BucketGrid[T]) BulkInsert(entries []pow2grid.Entry[T]) {
 		entries,
 		func(e pow2grid.Entry[T]) bool { return e.Value != nil && g.inBounds(e.Pos) },
 		true,
-		func(chunkKey ChunkKey, bucket *lqtree.LinearQuadTree[T], locals pow2grid.Entry[T]) {
+		func(chunkKey ChunkKey, bucket *grid.Grid[T], locals pow2grid.Entry[T]) {
 			bucket.SingleBulkInsert(locals)
 		},
 	)
@@ -52,7 +52,7 @@ func (g *BucketGrid[T]) BulkRemove(entries []pow2grid.Entry[T]) {
 		entries,
 		func(e pow2grid.Entry[T]) bool { return g.inBounds(e.Pos) },
 		false,
-		func(chunkKey ChunkKey, bucket *lqtree.LinearQuadTree[T], locals pow2grid.Entry[T]) {
+		func(chunkKey ChunkKey, bucket *grid.Grid[T], locals pow2grid.Entry[T]) {
 			bucket.SignleBulkRemove(locals)
 			if bucket.Count() == 0 {
 				// delete(g.buckets, chunkKey)
@@ -160,11 +160,11 @@ func (g *BucketGrid[T]) Bounds() pow2grid.AABB {
 	return g.bound
 }
 
-func (g *BucketGrid[T]) ensureBucket(key ChunkKey) *lqtree.LinearQuadTree[T] {
+func (g *BucketGrid[T]) ensureBucket(key ChunkKey) *grid.Grid[T] {
 	if bucket := g.buckets[key]; bucket != nil {
 		return bucket
 	}
-	bucket := lqtree.NewLinearQuadTree[T](g.bucketsResolution)
+	bucket := grid.NewGrid[T](g.bucketsResolution)
 	g.buckets[key] = bucket
 	return bucket
 }
@@ -193,7 +193,7 @@ func (g *BucketGrid[T]) processEntriesOneByOne(
 	entries []pow2grid.Entry[T],
 	keep func(pow2grid.Entry[T]) bool,
 	ensureBucket bool,
-	apply func(ChunkKey, *lqtree.LinearQuadTree[T], pow2grid.Entry[T]),
+	apply func(ChunkKey, *grid.Grid[T], pow2grid.Entry[T]),
 ) {
 	for _, e := range entries {
 		if !keep(e) {
@@ -203,7 +203,7 @@ func (g *BucketGrid[T]) processEntriesOneByOne(
 		chunkKey, localPos := g.chunkKey(e.Pos)
 		local := pow2grid.Entry[T]{Pos: localPos, Value: e.Value}
 
-		var bucket *lqtree.LinearQuadTree[T]
+		var bucket *grid.Grid[T]
 		if ensureBucket {
 			bucket = g.ensureBucket(chunkKey)
 		} else {

@@ -1,4 +1,4 @@
-package zorder
+package grid
 
 import (
 	"testing"
@@ -6,15 +6,8 @@ import (
 	"github.com/kjkrol/gokq/pkg/pow2grid"
 )
 
-func TestBucketGridInsertAndGet(t *testing.T) {
-	maxXY := pow2grid.Size32x32.Side()
-	grid := NewBucketGrid[string](
-		pow2grid.Size8x8,
-		pow2grid.AABB{
-			Min: pow2grid.Pos{X: 0, Y: 0},
-			Max: pow2grid.Pos{X: maxXY, Y: maxXY},
-		},
-	)
+func TestGridInsertAndGet(t *testing.T) {
+	grid := NewGrid[string](pow2grid.Size8x8)
 
 	entries := []pow2grid.Entry[string]{
 		{Pos: pow2grid.Pos{X: 0, Y: 0}, Value: strPtr("a")},
@@ -39,15 +32,8 @@ func TestBucketGridInsertAndGet(t *testing.T) {
 	}
 }
 
-func TestBucketGridRemove(t *testing.T) {
-	maxXY := pow2grid.Size32x32.Side()
-	grid := NewBucketGrid[string](
-		pow2grid.Size8x8,
-		pow2grid.AABB{
-			Min: pow2grid.Pos{X: 0, Y: 0},
-			Max: pow2grid.Pos{X: maxXY, Y: maxXY},
-		},
-	)
+func TestGridRemove(t *testing.T) {
+	grid := NewGrid[string](pow2grid.Size8x8)
 
 	entries := []pow2grid.Entry[string]{
 		{Pos: pow2grid.Pos{X: 0, Y: 0}, Value: strPtr("a")},
@@ -87,15 +73,8 @@ func TestBucketGridRemove(t *testing.T) {
 	}
 }
 
-func TestBucketGridMove(t *testing.T) {
-	maxXY := pow2grid.Size32x32.Side()
-	grid := NewBucketGrid[string](
-		pow2grid.Size8x8,
-		pow2grid.AABB{
-			Min: pow2grid.Pos{X: 0, Y: 0},
-			Max: pow2grid.Pos{X: maxXY, Y: maxXY},
-		},
-	)
+func TestGridUpdateWithMove(t *testing.T) {
+	grid := NewGrid[string](pow2grid.Size8x8)
 
 	b := strPtr("b")
 	d := strPtr("d")
@@ -110,7 +89,7 @@ func TestBucketGridMove(t *testing.T) {
 
 	updates := pow2grid.NewEntriesMove[string](2)
 	updates.Append(b, pow2grid.Pos{X: 1, Y: 1}, pow2grid.Pos{X: 4, Y: 1})
-	updates.Append(d, pow2grid.Pos{X: 3, Y: 3}, pow2grid.Pos{X: 5, Y: 5})
+	updates.Append(d, pow2grid.Pos{X: 3, Y: 3}, pow2grid.Pos{X: 4, Y: 4})
 	grid.BulkMove(updates)
 
 	checks := []struct {
@@ -123,7 +102,7 @@ func TestBucketGridMove(t *testing.T) {
 		{pos: pow2grid.Pos{X: 2, Y: 2}, present: true, expected: "c"},
 		{pos: pow2grid.Pos{X: 3, Y: 3}, present: false},
 		{pos: pow2grid.Pos{X: 4, Y: 1}, present: true, expected: "b"},
-		{pos: pow2grid.Pos{X: 5, Y: 5}, present: true, expected: "d"},
+		{pos: pow2grid.Pos{X: 4, Y: 4}, present: true, expected: "d"},
 	}
 
 	for _, c := range checks {
@@ -140,16 +119,10 @@ func TestBucketGridMove(t *testing.T) {
 	}
 }
 
-func TestBucketGridQueryRange(t *testing.T) {
-	maxXY := pow2grid.Size32x32.Side()
-	grid := NewBucketGrid[string](
-		pow2grid.Size8x8,
-		pow2grid.AABB{
-			Min: pow2grid.Pos{X: 0, Y: 0},
-			Max: pow2grid.Pos{X: maxXY, Y: maxXY},
-		},
-	)
+func TestGridQueryRange(t *testing.T) {
+	grid := NewGrid[string](pow2grid.Size8x8)
 
+	// Clustered points: one center with 4 neighbors
 	cluster := []pow2grid.Entry[string]{
 		{Pos: pow2grid.Pos{X: 3, Y: 3}, Value: strPtr("center")},
 		{Pos: pow2grid.Pos{X: 2, Y: 3}, Value: strPtr("west")},
@@ -158,6 +131,7 @@ func TestBucketGridQueryRange(t *testing.T) {
 		{Pos: pow2grid.Pos{X: 3, Y: 4}, Value: strPtr("south")},
 	}
 
+	// Far points that should not be returned
 	far := []pow2grid.Entry[string]{
 		{Pos: pow2grid.Pos{X: 0, Y: 0}, Value: strPtr("far1")},
 		{Pos: pow2grid.Pos{X: 7, Y: 7}, Value: strPtr("far2")},
@@ -171,58 +145,6 @@ func TestBucketGridQueryRange(t *testing.T) {
 	n := grid.QueryRange(pow2grid.AABB{
 		Min: pow2grid.Pos{X: 2, Y: 2},
 		Max: pow2grid.Pos{X: 4, Y: 4},
-	}, buf)
-
-	found := make(map[string]bool)
-	for i := 0; i < n; i++ {
-		v := buf[i]
-		if v != nil {
-			found[*v] = true
-		}
-	}
-
-	expected := []string{"center", "west", "east", "north", "south"}
-	for _, want := range expected {
-		if !found[want] {
-			t.Fatalf("expected to find %q in query results", want)
-		}
-	}
-	if len(found) != len(expected) {
-		t.Fatalf("unexpected extra results: got %v", found)
-	}
-}
-
-func TestBucketGridQueryRangeCrossChunk(t *testing.T) {
-	maxXY := pow2grid.Size16x16.Side()
-	grid := NewBucketGrid[string](
-		pow2grid.Size4x4,
-		pow2grid.AABB{
-			Min: pow2grid.Pos{X: 0, Y: 0},
-			Max: pow2grid.Pos{X: maxXY, Y: maxXY},
-		},
-	)
-
-	cluster := []pow2grid.Entry[string]{
-		{Pos: pow2grid.Pos{X: 4, Y: 4}, Value: strPtr("center")}, // chunk origin (size1 -> 1x1)
-		{Pos: pow2grid.Pos{X: 3, Y: 4}, Value: strPtr("west")},   // neighboring chunk to the west
-		{Pos: pow2grid.Pos{X: 5, Y: 4}, Value: strPtr("north")},  // neighboring chunk to the north
-		{Pos: pow2grid.Pos{X: 4, Y: 3}, Value: strPtr("east")},   // neighboring chunk to the east
-		{Pos: pow2grid.Pos{X: 4, Y: 5}, Value: strPtr("south")},  // neighboring chunk to the south
-	}
-
-	far := []pow2grid.Entry[string]{
-		{Pos: pow2grid.Pos{X: 0, Y: 0}, Value: strPtr("far1")},
-		{Pos: pow2grid.Pos{X: 7, Y: 7}, Value: strPtr("far2")},
-		{Pos: pow2grid.Pos{X: 6, Y: 1}, Value: strPtr("far3")},
-		{Pos: pow2grid.Pos{X: 10, Y: 10}, Value: strPtr("far4")},
-	}
-
-	grid.BulkInsert(append(cluster, far...))
-
-	buf := make([]*string, 16)
-	n := grid.QueryRange(pow2grid.AABB{
-		Min: pow2grid.Pos{X: 3, Y: 3},
-		Max: pow2grid.Pos{X: 5, Y: 5},
 	}, buf)
 
 	found := make(map[string]bool)
