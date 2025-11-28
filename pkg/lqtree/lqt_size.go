@@ -6,17 +6,17 @@ package lqtree
 type LQTSize uint8
 
 const (
-	Size1       LQTSize = iota // 1x1
-	Size4                      // 2x2
-	Size16                     // 4x4
-	Size64                     // 8x8
-	Size256                    // 16x16
-	Size1024                   // 32x32
-	Size4096                   // 64x64
-	Size16384                  // 128x128
-	Size65536                  // 256x256
-	Size262144                 // 512x512
-	Size1048576                // 1024x1024
+	Size1 LQTSize = iota
+	Size2x2
+	Size4x4
+	Size8x8
+	Size16x16
+	Size32x32
+	Size64x64
+	Size128x128
+	Size256x256
+	Size512x512
+	Size1024x1024
 )
 
 // Resolution returns the max coordinate on each axis (side length - 1), e.g. Size1024 (32x32) → 31.

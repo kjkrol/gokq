@@ -3,8 +3,8 @@ package lqtree
 import "testing"
 
 func TestZOrderBucketGridInsertAndGet(t *testing.T) {
-	maxXY := Size1024.Resolution()
-	grid := NewZOrderBucketGrid[string](Size64, AABB{Min: Pos{0, 0}, Max: Pos{maxXY, maxXY}})
+	maxXY := Size32x32.Resolution()
+	grid := NewZOrderBucketGrid[string](Size8x8, AABB{Min: Pos{0, 0}, Max: Pos{maxXY, maxXY}})
 
 	entries := []Entry[string]{
 		{Pos: Pos{X: 0, Y: 0}, Value: strPtr("a")},
@@ -30,8 +30,8 @@ func TestZOrderBucketGridInsertAndGet(t *testing.T) {
 }
 
 func TestZOrderBucketGridRemove(t *testing.T) {
-	maxXY := Size1024.Resolution()
-	grid := NewZOrderBucketGrid[string](Size64, AABB{Min: Pos{0, 0}, Max: Pos{maxXY, maxXY}})
+	maxXY := Size32x32.Resolution()
+	grid := NewZOrderBucketGrid[string](Size8x8, AABB{Min: Pos{0, 0}, Max: Pos{maxXY, maxXY}})
 
 	entries := []Entry[string]{
 		{Pos: Pos{X: 0, Y: 0}, Value: strPtr("a")},
@@ -72,8 +72,8 @@ func TestZOrderBucketGridRemove(t *testing.T) {
 }
 
 func TestZOrderBucketGridMove(t *testing.T) {
-	maxXY := Size1024.Resolution()
-	grid := NewZOrderBucketGrid[string](Size64, AABB{Min: Pos{0, 0}, Max: Pos{maxXY, maxXY}})
+	maxXY := Size32x32.Resolution()
+	grid := NewZOrderBucketGrid[string](Size8x8, AABB{Min: Pos{0, 0}, Max: Pos{maxXY, maxXY}})
 
 	b := strPtr("b")
 	d := strPtr("d")
@@ -119,8 +119,8 @@ func TestZOrderBucketGridMove(t *testing.T) {
 }
 
 func TestZOrderBucketGridQueryRange(t *testing.T) {
-	maxXY := Size1024.Resolution()
-	grid := NewZOrderBucketGrid[string](Size64, AABB{Min: Pos{0, 0}, Max: Pos{maxXY, maxXY}})
+	maxXY := Size32x32.Resolution()
+	grid := NewZOrderBucketGrid[string](Size8x8, AABB{Min: Pos{0, 0}, Max: Pos{maxXY, maxXY}})
 
 	cluster := []Entry[string]{
 		{Pos: Pos{X: 3, Y: 3}, Value: strPtr("center")},
@@ -164,8 +164,8 @@ func TestZOrderBucketGridQueryRange(t *testing.T) {
 }
 
 func TestZOrderBucketGridQueryRangeCrossChunk(t *testing.T) {
-	maxXY := Size256.Resolution()
-	grid := NewZOrderBucketGrid[string](Size16, AABB{Min: Pos{0, 0}, Max: Pos{maxXY, maxXY}})
+	maxXY := Size16x16.Resolution()
+	grid := NewZOrderBucketGrid[string](Size4x4, AABB{Min: Pos{0, 0}, Max: Pos{maxXY, maxXY}})
 
 	cluster := []Entry[string]{
 		{Pos: Pos{X: 4, Y: 4}, Value: strPtr("center")}, // chunk origin (size1 -> 1x1)

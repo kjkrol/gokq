@@ -5,7 +5,7 @@ import "testing"
 func strPtr(s string) *string { return &s }
 
 func TestLinearQuadTreeInsertAndGet(t *testing.T) {
-	qt := NewLinearQuadTree[string](Size64)
+	qt := NewLinearQuadTree[string](Size8x8)
 
 	entries := []Entry[string]{
 		{Pos: Pos{X: 0, Y: 0}, Value: strPtr("a")},
@@ -31,7 +31,7 @@ func TestLinearQuadTreeInsertAndGet(t *testing.T) {
 }
 
 func TestLinearQuadTreeRemove(t *testing.T) {
-	qt := NewLinearQuadTree[string](Size64)
+	qt := NewLinearQuadTree[string](Size8x8)
 
 	entries := []Entry[string]{
 		{Pos: Pos{X: 0, Y: 0}, Value: strPtr("a")},
@@ -72,7 +72,7 @@ func TestLinearQuadTreeRemove(t *testing.T) {
 }
 
 func TestLinearQuadTreeUpdateWithMove(t *testing.T) {
-	qt := NewLinearQuadTree[string](Size64)
+	qt := NewLinearQuadTree[string](Size8x8)
 
 	entries := []Entry[string]{
 		{Pos: Pos{X: 0, Y: 0}, Value: strPtr("a")},
@@ -115,7 +115,7 @@ func TestLinearQuadTreeUpdateWithMove(t *testing.T) {
 }
 
 func TestLinearQuadTreeQueryRange(t *testing.T) {
-	qt := NewLinearQuadTree[string](Size64)
+	qt := NewLinearQuadTree[string](Size8x8)
 
 	// Clustered points: one center with 4 neighbors
 	cluster := []Entry[string]{

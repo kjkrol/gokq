@@ -7,7 +7,7 @@ import (
 )
 
 const benchMaxXY = uint32(4096)
-const bucketSize = Size65536
+const bucketSize = Size256x256
 
 func BenchmarkZOrderBucketGridBulkMove(b *testing.B) {
 	cases := []struct {
@@ -85,7 +85,7 @@ func BenchmarkZOrderBucketGridQueryRange(b *testing.B) {
 		}
 	}
 
-	grid := NewZOrderBucketGrid[string](Size65536, AABB{
+	grid := NewZOrderBucketGrid[string](Size256x256, AABB{
 		Min: Pos{0, 0},
 		Max: Pos{benchMaxXY, benchMaxXY},
 	})
