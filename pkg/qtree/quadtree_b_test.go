@@ -3,12 +3,13 @@ package qtree
 import (
 	"testing"
 
-	"github.com/kjkrol/gokg/pkg/geometry"
+	"github.com/kjkrol/gokg/pkg/geom"
+	"github.com/kjkrol/gokg/pkg/plane"
 	"github.com/kjkrol/goku/pkg/sliceutils"
 )
 
 func TestQuadTreeBox_FindNeighborsSimple(t *testing.T) {
-	boundedPlane := geometry.NewBoundedPlane(64.0, 64.0)
+	boundedPlane := plane.NewEuclidean2D(64.0, 64.0)
 	qtree := NewQuadTree(boundedPlane)
 	defer qtree.Close()
 
@@ -34,7 +35,7 @@ func TestQuadTreeBox_FindNeighborsSimple(t *testing.T) {
 }
 
 func TestQuadTreeBox_ForBoundedPlane(t *testing.T) {
-	boundedPlane := geometry.NewBoundedPlane(4, 4)
+	boundedPlane := plane.NewEuclidean2D(4, 4)
 	qtree := NewQuadTree(boundedPlane)
 	defer qtree.Close()
 
@@ -56,7 +57,7 @@ func TestQuadTreeBox_ForBoundedPlane(t *testing.T) {
 }
 
 func TestQuadTreeBox_ForCyclicBoundedPlane(t *testing.T) {
-	cyclicPlane := geometry.NewCyclicBoundedPlane(4, 4)
+	cyclicPlane := plane.NewToroidal2D(4, 4)
 	qtree := NewQuadTree(cyclicPlane)
 	defer qtree.Close()
 
@@ -81,15 +82,15 @@ func TestQuadTreeBox_ForCyclicBoundedPlane(t *testing.T) {
 }
 
 func TestQuadTree_RemoveCascadeCompression_Box(t *testing.T) {
-	plane := geometry.NewBoundedPlane(64.0, 64.0)
+	plane := plane.NewEuclidean2D(64.0, 64.0)
 	qtree := NewQuadTree(plane)
 	defer qtree.Close()
 
 	// malutki box (1x1), żeby dało się wcisnąć w child
 	makeTinyBox :=
 		func(x, y float64) *TestItem[float64] {
-			vec := geometry.NewVec(x, y)
-			box := geometry.NewBoundingBoxAround(vec, 0.5)
+			vec := geom.NewVec(x, y)
+			box := geom.NewAABBAround(vec, 0.5)
 			return newTestItemFromBox(box)
 		}
 
@@ -149,13 +150,13 @@ func TestQuadTree_RemoveCascadeCompression_Box(t *testing.T) {
 }
 
 func TestQuadTree_BoxItems_LargeStayInParent_SmallGoToChildren(t *testing.T) {
-	plane := geometry.NewBoundedPlane(64.0, 64.0)
+	plane := plane.NewEuclidean2D(64.0, 64.0)
 	qtree := NewQuadTree(plane)
 	defer qtree.Close()
 
 	// Dodajemy 6 dużych boxów, każdy obejmuje połowę przestrzeni
 	for range 6 {
-		box := geometry.NewBoundingBoxAt(geometry.Vec[float64]{X: 0, Y: 0}, 33, 33) // duży box, nie mieści się w jednym childzie
+		box := geom.NewAABBAt(geom.Vec[float64]{X: 0, Y: 0}, 33, 33) // duży box, nie mieści się w jednym childzie
 		large := newTestItemFromBox(box)
 		qtree.Add(large)
 	}
@@ -169,9 +170,9 @@ func TestQuadTree_BoxItems_LargeStayInParent_SmallGoToChildren(t *testing.T) {
 	}
 
 	// Teraz dodajemy kilka małych boxów, które zmieszczą się w ćwiartkach
-	boxSmall1 := geometry.NewBoundingBoxAt(geometry.Vec[float64]{X: 1, Y: 1}, 1, 1)
+	boxSmall1 := geom.NewAABBAt(geom.Vec[float64]{X: 1, Y: 1}, 1, 1)
 	small1 := newTestItemFromBox(boxSmall1)
-	boxSmall2 := geometry.NewBoundingBoxAt(geometry.Vec[float64]{X: 10, Y: 10}, 1, 1)
+	boxSmall2 := geom.NewAABBAt(geom.Vec[float64]{X: 10, Y: 10}, 1, 1)
 	small2 := newTestItemFromBox(boxSmall2)
 	qtree.Add(small1)
 	qtree.Add(small2)
@@ -197,7 +198,7 @@ func TestQuadTree_BoxItems_LargeStayInParent_SmallGoToChildren(t *testing.T) {
 }
 
 func TestQuadTree_Box_CountDepthAllItemsLeafRectangles(t *testing.T) {
-	plane := geometry.NewBoundedPlane(16.0, 16.0)
+	plane := plane.NewEuclidean2D(16.0, 16.0)
 	qtree := NewQuadTree(plane)
 	defer qtree.Close()
 
@@ -266,16 +267,16 @@ func TestQuadTree_Box_CountDepthAllItemsLeafRectangles(t *testing.T) {
 }
 
 func TestSortNeighbors_BottomRightTieBreak(t *testing.T) {
-	plane := geometry.NewBoundedPlane(16.0, 16.0)
+	plane := plane.NewEuclidean2D(16.0, 16.0)
 	qtree := NewQuadTree(plane)
 	defer qtree.Close()
 
 	// Box A i B mają identyczne TopLeft
-	box1 := geometry.NewBoundingBoxAt(geometry.NewVec(1.0, 1), 2, 2)
+	box1 := geom.NewAABBAt(geom.NewVec(1.0, 1), 2, 2)
 	a := newTestItemFromBox(box1)
-	box2 := geometry.NewBoundingBoxAt(geometry.NewVec(1.0, 1), 2, 3) // różni się tylko BottomRight.Y
+	box2 := geom.NewAABBAt(geom.NewVec(1.0, 1), 2, 3) // różni się tylko BottomRight.Y
 	b := newTestItemFromBox(box2)
-	box3 := geometry.NewBoundingBoxAt(geometry.NewVec(1.0, 1), 3, 2) // różni się tylko BottomRight.X
+	box3 := geom.NewAABBAt(geom.NewVec(1.0, 1), 3, 2) // różni się tylko BottomRight.X
 	c := newTestItemFromBox(box3)
 
 	items := []Item[float64]{b, a, c}

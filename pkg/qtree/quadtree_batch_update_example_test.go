@@ -3,11 +3,11 @@ package qtree
 import (
 	"fmt"
 
-	"github.com/kjkrol/gokg/pkg/geometry"
+	"github.com/kjkrol/gokg/pkg/plane"
 )
 
 func ExampleBatchUpdateCoordinator() {
-	plane := geometry.NewBoundedPlane(16.0, 16.0)
+	plane := plane.NewEuclidean2D(16.0, 16.0)
 	tree := NewQuadTree(plane)
 	defer tree.Close()
 

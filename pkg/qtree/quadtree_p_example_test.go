@@ -4,18 +4,19 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/kjkrol/gokg/pkg/geometry"
+	"github.com/kjkrol/gokg/pkg/geom"
+	"github.com/kjkrol/gokg/pkg/plane"
 )
 
 var globalID uint64
 
-type TestItem[T geometry.SupportedNumeric] struct {
-	geometry.BoundingBox[T]
+type TestItem[T geom.Numeric] struct {
+	geom.AABB[T]
 	id uint64
 }
 
-func (t *TestItem[T]) Bound() geometry.BoundingBox[T] {
-	return t.BoundingBox
+func (t *TestItem[T]) Bound() geom.AABB[T] {
+	return t.AABB
 }
 
 func (t *TestItem[T]) SameID(other Item[T]) bool {
@@ -26,33 +27,33 @@ func (t *TestItem[T]) SameID(other Item[T]) bool {
 	return t.id == o.id
 }
 
-func newTestItemPointAtPos[T geometry.SupportedNumeric](x, y T) *TestItem[T] {
-	vec := geometry.NewVec(x, y)
-	box := geometry.NewBoundingBoxAround(vec, 0)
+func newTestItemPointAtPos[T geom.Numeric](x, y T) *TestItem[T] {
+	vec := geom.NewVec(x, y)
+	box := geom.NewAABBAround(vec, 0)
 	id := atomic.AddUint64(&globalID, 1)
-	return &TestItem[T]{BoundingBox: box, id: id}
+	return &TestItem[T]{AABB: box, id: id}
 }
 
-func newTestItemFromPos[T geometry.SupportedNumeric](x1, y1, x2, y2 T) *TestItem[T] {
-	box := geometry.NewBoundingBoxAt(geometry.NewVec(x1, y1), x2, y2)
+func newTestItemFromPos[T geom.Numeric](x1, y1, x2, y2 T) *TestItem[T] {
+	box := geom.NewAABBAt(geom.NewVec(x1, y1), x2, y2)
 	id := atomic.AddUint64(&globalID, 1)
-	return &TestItem[T]{BoundingBox: box, id: id}
+	return &TestItem[T]{AABB: box, id: id}
 }
 
-func newTestItemFromVec[T geometry.SupportedNumeric](vec geometry.Vec[T]) *TestItem[T] {
-	box := geometry.NewBoundingBoxAround(vec, 0)
+func newTestItemFromVec[T geom.Numeric](vec geom.Vec[T]) *TestItem[T] {
+	box := geom.NewAABBAround(vec, 0)
 	id := atomic.AddUint64(&globalID, 1)
-	return &TestItem[T]{BoundingBox: box, id: id}
+	return &TestItem[T]{AABB: box, id: id}
 }
 
-func newTestItemFromBox[T geometry.SupportedNumeric](box geometry.BoundingBox[T]) *TestItem[T] {
+func newTestItemFromBox[T geom.Numeric](box geom.AABB[T]) *TestItem[T] {
 	id := atomic.AddUint64(&globalID, 1)
-	return &TestItem[T]{BoundingBox: box, id: id}
+	return &TestItem[T]{AABB: box, id: id}
 }
 
 func ExampleQuadTree_FindNeighbors_targetInTree() {
 	// Create a bounded plane and a quadtree
-	boundedPlane := geometry.NewBoundedPlane(64, 64)
+	boundedPlane := plane.NewEuclidean2D(64, 64)
 	qtree := NewQuadTree(boundedPlane)
 	defer qtree.Close()
 
@@ -86,7 +87,7 @@ func ExampleQuadTree_FindNeighbors_targetInTree() {
 
 func ExampleQuadTree_FindNeighbors_targetNotInTree() {
 	// Create a bounded plane and a quadtree
-	boundedPlane := geometry.NewBoundedPlane(64, 64)
+	boundedPlane := plane.NewEuclidean2D(64, 64)
 	qtree := NewQuadTree(boundedPlane)
 	defer qtree.Close()
 

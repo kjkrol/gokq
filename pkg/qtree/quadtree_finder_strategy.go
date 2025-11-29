@@ -1,23 +1,26 @@
 package qtree
 
-import "github.com/kjkrol/gokg/pkg/geometry"
+import (
+	"github.com/kjkrol/gokg/pkg/geom"
+	"github.com/kjkrol/gokg/pkg/plane"
+)
 
-type NodeIntersectionDetection[T geometry.SupportedNumeric] func(Node[T]) bool
-type ItemsInRangeDetection[T geometry.SupportedNumeric] func(Node[T], func(Item[T]))
+type NodeIntersectionDetection[T geom.Numeric] func(Node[T]) bool
+type ItemsInRangeDetection[T geom.Numeric] func(Node[T], func(Item[T]))
 
-type QuadTreeFinderStrategy[T geometry.SupportedNumeric] interface {
+type QuadTreeFinderStrategy[T geom.Numeric] interface {
 	NodeIntersectionDetectionFactory(target Item[T], margin T) NodeIntersectionDetection[T]
 	ItemsInRangeDetectionFactory(target Item[T], maring T) ItemsInRangeDetection[T]
 }
 
 // ----------------- DefaultQuadTreeFinderStrategy -----------------
 
-type DefaultQuadTreeFinderStrategy[T geometry.SupportedNumeric] struct {
-	geometry.Plane[T]
+type DefaultQuadTreeFinderStrategy[T geom.Numeric] struct {
+	plane.Space2D[T]
 }
 
-func NewDefaultQuadTreeFinderStrategy[T geometry.SupportedNumeric](
-	plane geometry.Plane[T],
+func NewDefaultQuadTreeFinderStrategy[T geom.Numeric](
+	plane plane.Space2D[T],
 ) QuadTreeFinderStrategy[T] {
 	return DefaultQuadTreeFinderStrategy[T]{plane}
 }
@@ -26,13 +29,14 @@ func (s DefaultQuadTreeFinderStrategy[T]) NodeIntersectionDetectionFactory(
 	target Item[T],
 	margin T,
 ) NodeIntersectionDetection[T] {
-	probe := s.Plane.WrapBoundingBox(target.Bound())
-	s.Plane.Expand(&probe, margin)
+	probe := s.Space2D.WrapAABB(target.Bound())
+	s.Space2D.Expand(&probe, margin)
 	return func(node Node[T]) bool {
-		intersection := node.bounds.Intersects(probe.BoundingBox)
-		for _, frag := range probe.Fragments() {
-			intersection = intersection || node.bounds.Intersects(frag)
-		}
+		intersection := node.bounds.Intersects(probe.AABB)
+		probe.VisitFragments(func(pos plane.FragPosition, aabb geom.AABB[T]) bool {
+			intersection = intersection || node.bounds.Intersects(aabb)
+			return true
+		})
 		return intersection
 	}
 }
@@ -41,7 +45,7 @@ func (s DefaultQuadTreeFinderStrategy[T]) ItemsInRangeDetectionFactory(
 	target Item[T],
 	margin T,
 ) ItemsInRangeDetection[T] {
-	boundingBoxDistance := s.Plane.BoundingBoxDistance()
+	boundingBoxDistance := s.Space2D.AABBDistance()
 	return func(node Node[T], inRangeApply func(Item[T])) {
 		for _, item := range node.items {
 			if item.SameID(target) {

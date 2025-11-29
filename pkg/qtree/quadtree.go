@@ -1,7 +1,8 @@
 package qtree
 
 import (
-	"github.com/kjkrol/gokg/pkg/geometry"
+	"github.com/kjkrol/gokg/pkg/geom"
+	"github.com/kjkrol/gokg/pkg/plane"
 	"github.com/kjkrol/gokq/pkg/dfs"
 )
 
@@ -12,13 +13,13 @@ const (
 
 // Item represents an object with an axis-aligned bounding box and a stable identifier.
 // SameID must return true when both operands refer to the same logical entity.
-type Item[T geometry.SupportedNumeric] interface {
-	Bound() geometry.BoundingBox[T]
+type Item[T geom.Numeric] interface {
+	Bound() geom.AABB[T]
 	SameID(other Item[T]) bool
 }
 
 // QuadTree stores spatial items in a hierarchical grid for fast range queries.
-type QuadTree[T geometry.SupportedNumeric] struct {
+type QuadTree[T geom.Numeric] struct {
 	root        *Node[T]
 	appender    QuadTreeAppender[T]
 	remover     QuadTreeRemover[T]
@@ -27,8 +28,8 @@ type QuadTree[T geometry.SupportedNumeric] struct {
 }
 
 // NewQuadTree builds a QuadTree covering the supplied plane viewport.
-func NewQuadTree[T geometry.SupportedNumeric](
-	plane geometry.Plane[T],
+func NewQuadTree[T geom.Numeric](
+	plane plane.Space2D[T],
 	opts ...QuadTreeOption[T],
 ) *QuadTree[T] {
 	rootBounds := plane.Viewport()
@@ -86,7 +87,7 @@ func (t *QuadTree[T]) AllItems() []Item[T] {
 }
 
 // LeafBounds returns the bounding boxes of all current leaf nodes.
-func (t *QuadTree[T]) LeafBounds() []geometry.BoundingBox[T] {
+func (t *QuadTree[T]) LeafBounds() []geom.AABB[T] {
 	return t.root.leafBounds()
 }
 

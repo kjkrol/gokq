@@ -1,11 +1,11 @@
 package qtree
 
 import (
-	"github.com/kjkrol/gokg/pkg/geometry"
+	"github.com/kjkrol/gokg/pkg/geom"
 	"github.com/kjkrol/gokq/pkg/dfs"
 )
 
-type QuadTreeRemover[T geometry.SupportedNumeric] struct {
+type QuadTreeRemover[T geom.Numeric] struct {
 	capacity int
 }
 

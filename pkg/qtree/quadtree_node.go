@@ -1,25 +1,25 @@
 package qtree
 
 import (
-	"github.com/kjkrol/gokg/pkg/geometry"
+	"github.com/kjkrol/gokg/pkg/geom"
 	"github.com/kjkrol/gokq/pkg/dfs"
 )
 
-type Node[T geometry.SupportedNumeric] struct {
-	bounds geometry.BoundingBox[T]
+type Node[T geom.Numeric] struct {
+	bounds geom.AABB[T]
 	items  []Item[T]
 	parent *Node[T]
 	childs []*Node[T]
 }
 
-func newNode[T geometry.SupportedNumeric](bounds geometry.BoundingBox[T], parent *Node[T]) *Node[T] {
+func newNode[T geom.Numeric](bounds geom.AABB[T], parent *Node[T]) *Node[T] {
 	return &Node[T]{bounds: bounds, items: make([]Item[T], 0), parent: parent}
 }
 
 func (n *Node[T]) isLeaf() bool { return len(n.childs) == 0 }
 func (n *Node[T]) isNode() bool { return len(n.childs) > 0 }
 
-func (n *Node[T]) findFittingChild(r geometry.BoundingBox[T]) *Node[T] {
+func (n *Node[T]) findFittingChild(r geom.AABB[T]) *Node[T] {
 	for _, child := range n.childs {
 		if child.bounds.Contains(r) {
 			return child
@@ -67,8 +67,8 @@ func (n *Node[T]) depth() int {
 	return maxDepth
 }
 
-func (n *Node[T]) leafBounds() []geometry.BoundingBox[T] {
-	rectangles := []geometry.BoundingBox[T]{}
+func (n *Node[T]) leafBounds() []geom.AABB[T] {
+	rectangles := []geom.AABB[T]{}
 
 	dfs.DFS(n, struct{}{}, func(node *Node[T], _ struct{}) (dfs.DFSControl, struct{}) {
 		if node.isLeaf() {

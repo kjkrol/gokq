@@ -3,12 +3,13 @@ package qtree
 import (
 	"testing"
 
-	"github.com/kjkrol/gokg/pkg/geometry"
+	"github.com/kjkrol/gokg/pkg/geom"
+	"github.com/kjkrol/gokg/pkg/plane"
 	"github.com/kjkrol/goku/pkg/sliceutils"
 )
 
 func TestQuadTreeFindNeighbors(t *testing.T) {
-	boundedPlane := geometry.NewBoundedPlane(64.0, 64.0)
+	boundedPlane := plane.NewEuclidean2D(64.0, 64.0)
 	qtree := NewQuadTree(boundedPlane)
 
 	defer qtree.Close()
@@ -42,7 +43,7 @@ func TestQuadTreeFindNeighbors(t *testing.T) {
 }
 
 func TestQuadTreeForBoundedPlane(t *testing.T) {
-	boundedPlane := geometry.NewBoundedPlane(4, 4)
+	boundedPlane := plane.NewEuclidean2D(4, 4)
 	qtree := NewQuadTree(boundedPlane)
 
 	defer qtree.Close()
@@ -73,7 +74,7 @@ func TestQuadTreeForBoundedPlane(t *testing.T) {
 }
 
 func TestQuadTreeForCyclicBoundedPlane(t *testing.T) {
-	cyclicBoundedPlane := geometry.NewCyclicBoundedPlane(4, 4)
+	cyclicBoundedPlane := plane.NewToroidal2D(4, 4)
 	qtree := NewQuadTree(cyclicBoundedPlane)
 
 	defer qtree.Close()
@@ -108,7 +109,7 @@ func TestQuadTreeForCyclicBoundedPlane(t *testing.T) {
 }
 
 func TestQuadTreeForCyclicBoundedPlaneWithLeavesIn2ndGeneration(t *testing.T) {
-	cyclicBoundedPlane := geometry.NewCyclicBoundedPlane(100, 100)
+	cyclicBoundedPlane := plane.NewToroidal2D(100, 100)
 	qtree := NewQuadTree(cyclicBoundedPlane)
 	defer qtree.Close()
 
@@ -126,7 +127,7 @@ func TestQuadTreeForCyclicBoundedPlaneWithLeavesIn2ndGeneration(t *testing.T) {
 	qtree.Add(newTestItemPointAtPos(50, 50))
 
 	// Insert points such that the first leaves appear only in the 2nd generation/layer
-	for _, point := range []geometry.Vec[int]{
+	for _, point := range []geom.Vec[int]{
 		{X: 10, Y: 10}, {X: 90, Y: 10}, {X: 10, Y: 90}, {X: 90, Y: 90},
 		{X: 30, Y: 30}, {X: 70, Y: 30}, {X: 30, Y: 70}, {X: 70, Y: 70},
 		{X: 20, Y: 20}, {X: 80, Y: 20}, {X: 20, Y: 80}, {X: 80, Y: 80},
@@ -149,7 +150,7 @@ func TestQuadTreeForCyclicBoundedPlaneWithLeavesIn2ndGeneration(t *testing.T) {
 }
 
 func TestQuadTreeForCyclicBoundedPlaneWithLeavesIn5thGeneration(t *testing.T) {
-	cyclicBoundedPlane := geometry.NewCyclicBoundedPlane(100.0, 100.0)
+	cyclicBoundedPlane := plane.NewToroidal2D(100.0, 100.0)
 	qtree := NewQuadTree(cyclicBoundedPlane)
 
 	defer qtree.Close()
@@ -163,7 +164,7 @@ func TestQuadTreeForCyclicBoundedPlaneWithLeavesIn5thGeneration(t *testing.T) {
 	qtree.Add(item3)
 
 	// Insert points such that the first leaves appear only in the 5th generation/layer of nodes
-	for _, point := range []geometry.Vec[float64]{
+	for _, point := range []geom.Vec[float64]{
 		{X: 1, Y: 1}, {X: 2, Y: 2}, {X: 3, Y: 3}, {X: 4, Y: 4},
 		{X: 5, Y: 5}, {X: 6, Y: 6}, {X: 7, Y: 7}, {X: 8, Y: 8},
 		{X: 9, Y: 9}, {X: 10, Y: 10}, {X: 11, Y: 11}, {X: 12, Y: 12},
@@ -227,7 +228,7 @@ func verifyNodeDepth(t *testing.T, node *Node[int], currentDepth, targetDepth in
 }
 
 func TestQuadTree_RemoveCascadeCompression(t *testing.T) {
-	plane := geometry.NewBoundedPlane(64.0, 64.0)
+	plane := plane.NewEuclidean2D(64.0, 64.0)
 	qtree := NewQuadTree(plane)
 	defer qtree.Close()
 
@@ -281,7 +282,7 @@ func TestQuadTree_RemoveCascadeCompression(t *testing.T) {
 }
 
 func TestQuadTree_RemoveNonExistingItem(t *testing.T) {
-	plane := geometry.NewBoundedPlane(64.0, 64.0)
+	plane := plane.NewEuclidean2D(64.0, 64.0)
 	qtree := NewQuadTree(plane)
 	defer qtree.Close()
 
@@ -302,7 +303,7 @@ func TestQuadTree_RemoveNonExistingItem(t *testing.T) {
 }
 
 func TestQuadTree_Point_CountDepthAllItemsLeafRectangles(t *testing.T) {
-	plane := geometry.NewBoundedPlane(16.0, 16.0)
+	plane := plane.NewEuclidean2D(16.0, 16.0)
 	qtree := NewQuadTree(plane)
 	defer qtree.Close()
 
