@@ -1,7 +1,7 @@
 package qtree
 
 import (
-	"github.com/kjkrol/gokg/pkg/geometry"
+	"github.com/kjkrol/gokg/pkg/geom"
 	"github.com/kjkrol/gokq/pkg/dfs"
 )
 
@@ -9,7 +9,7 @@ const defaultBatchCompressThreshold = 128
 
 // BatchUpdateCoordinator tracks nodes touched during bulk updates so compression
 // can be deferred and executed once per batch instead of after every removal.
-type BatchUpdateCoordinator[T geometry.SupportedNumeric] struct {
+type BatchUpdateCoordinator[T geom.Numeric] struct {
 	touched   map[*Node[T]]struct{}
 	threshold int
 	QuadTreeAppender[T]
@@ -17,7 +17,7 @@ type BatchUpdateCoordinator[T geometry.SupportedNumeric] struct {
 }
 
 // NewBatchUpdateCoordinator creates a coordinator bound to the supplied tree.
-func NewBatchUpdateCoordinator[T geometry.SupportedNumeric](
+func NewBatchUpdateCoordinator[T geom.Numeric](
 	appender QuadTreeAppender[T],
 	remover QuadTreeRemover[T],
 ) BatchUpdateCoordinator[T] {
@@ -133,11 +133,11 @@ func (c *BatchUpdateCoordinator[T]) track(node *Node[T]) {
 	c.touched[node] = struct{}{}
 }
 
-type batchRemovalSet[T geometry.SupportedNumeric] struct {
+type batchRemovalSet[T geom.Numeric] struct {
 	items []Item[T]
 }
 
-func newBatchRemovalSet[T geometry.SupportedNumeric](items []Item[T]) *batchRemovalSet[T] {
+func newBatchRemovalSet[T geom.Numeric](items []Item[T]) *batchRemovalSet[T] {
 	copied := make([]Item[T], len(items))
 	copy(copied, items)
 	return &batchRemovalSet[T]{items: copied}
@@ -153,7 +153,7 @@ func (s *batchRemovalSet[T]) consume(target Item[T]) bool {
 	return false
 }
 
-func sameItem[T geometry.SupportedNumeric](a, b Item[T]) bool {
+func sameItem[T geom.Numeric](a, b Item[T]) bool {
 	if a == nil || b == nil {
 		return a == b
 	}

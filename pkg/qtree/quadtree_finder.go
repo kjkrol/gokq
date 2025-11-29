@@ -1,15 +1,15 @@
 package qtree
 
 import (
-	"github.com/kjkrol/gokg/pkg/geometry"
+	"github.com/kjkrol/gokg/pkg/geom"
 	"github.com/kjkrol/gokq/pkg/dfs"
 )
 
-type QuadTreeFinder[T geometry.SupportedNumeric] struct {
+type QuadTreeFinder[T geom.Numeric] struct {
 	strategy QuadTreeFinderStrategy[T]
 }
 
-func NewQuadTreeFinder[T geometry.SupportedNumeric](strategy QuadTreeFinderStrategy[T]) QuadTreeFinder[T] {
+func NewQuadTreeFinder[T geom.Numeric](strategy QuadTreeFinderStrategy[T]) QuadTreeFinder[T] {
 	return QuadTreeFinder[T]{strategy: strategy}
 }
 

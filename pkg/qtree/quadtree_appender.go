@@ -1,8 +1,8 @@
 package qtree
 
-import "github.com/kjkrol/gokg/pkg/geometry"
+import "github.com/kjkrol/gokg/pkg/geom"
 
-type QuadTreeAppender[T geometry.SupportedNumeric] struct {
+type QuadTreeAppender[T geom.Numeric] struct {
 	maxDepth int
 	capacity int
 }

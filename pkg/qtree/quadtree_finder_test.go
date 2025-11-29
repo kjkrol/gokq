@@ -3,14 +3,15 @@ package qtree
 import (
 	"testing"
 
-	"github.com/kjkrol/gokg/pkg/geometry"
+	"github.com/kjkrol/gokg/pkg/geom"
+	"github.com/kjkrol/gokg/pkg/plane"
 	"github.com/kjkrol/goku/pkg/sliceutils"
 )
 
 func TestQuadTree_Probe_For_BoundedPlane(t *testing.T) {
-	boundedPlane := geometry.NewBoundedPlane(100, 100)
+	boundedPlane := plane.NewCartesian(100, 100)
 	qtree := NewQuadTree(boundedPlane)
-	box := geometry.NewBoundingBoxAt(geometry.NewVec(0, 0), 2, 2)
+	box := geom.NewAABBAt(geom.NewVec(0, 0), 2, 2)
 	item := newTestItemFromBox(box)
 
 	nodeIntersectionDetection := qtree.finder.strategy.NodeIntersectionDetectionFactory(item, 1)
@@ -21,17 +22,17 @@ func TestQuadTree_Probe_For_BoundedPlane(t *testing.T) {
 }
 
 func TestQuadTree_FindNeighbors_ForCyclicBoundedPlane_WithFrags(t *testing.T) {
-	cyclicPlane := geometry.NewCyclicBoundedPlane(4, 4)
+	cyclicPlane := plane.NewTorus(4, 4)
 	qtree := NewQuadTree(cyclicPlane)
 	defer qtree.Close()
 
 	target := newTestItemFromPos(0, 0, 1, 1)
 
-	planeBox1 := cyclicPlane.WrapBoundingBox(geometry.NewBoundingBoxAt(geometry.NewVec(0, 0), 2, 2))
+	planeBox1 := cyclicPlane.WrapAABB(geom.NewAABBAt(geom.NewVec(0, 0), 2, 2))
 
-	cyclicPlane.Translate(&planeBox1, geometry.NewVec(0, 1))
+	cyclicPlane.Translate(&planeBox1, geom.NewVec(0, 1))
 
-	item1 := newTestItemFromBox(planeBox1.BoundingBox) // wrap od góry
+	item1 := newTestItemFromBox(planeBox1.AABB) // wrap od góry
 	qtree.Add(item1)
 
 	item1Frags := make([]*TestItem[int], len(planeBox1.Fragments()))
@@ -43,11 +44,11 @@ func TestQuadTree_FindNeighbors_ForCyclicBoundedPlane_WithFrags(t *testing.T) {
 		i++
 	}
 
-	planeBox2 := cyclicPlane.WrapBoundingBox(geometry.NewBoundingBoxAt(geometry.NewVec(0, 0), 4, 1))
+	planeBox2 := cyclicPlane.WrapAABB(geom.NewAABBAt(geom.NewVec(0, 0), 4, 1))
 
-	cyclicPlane.Translate(&planeBox2, geometry.NewVec(1, 0))
+	cyclicPlane.Translate(&planeBox2, geom.NewVec(1, 0))
 
-	item2 := newTestItemFromBox(planeBox2.BoundingBox) // wrap od lewej
+	item2 := newTestItemFromBox(planeBox2.AABB) // wrap od lewej
 	item2Frags := make([]*TestItem[int], len(planeBox2.Fragments()))
 
 	i = 0
